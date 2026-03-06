@@ -1,12 +1,16 @@
 package com.classroom.core.security;
 
 import com.classroom.core.model.User;
+import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
 
+@Getter
 public class UserPrincipal implements UserDetails {
 
     private final User user;
@@ -16,41 +20,41 @@ public class UserPrincipal implements UserDetails {
     }
 
     public UUID getId() {
-        throw new UnsupportedOperationException("Not implemented yet");
+        return user.getId();
     }
 
     @Override
     public String getUsername() {
-        throw new UnsupportedOperationException("Not implemented yet");
+        return user.getUsername();
     }
 
     @Override
     public String getPassword() {
-        throw new UnsupportedOperationException("Not implemented yet");
+        return user.getPasswordHash();
     }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        throw new UnsupportedOperationException("Not implemented yet");
+        return List.of(new SimpleGrantedAuthority("ROLE_USER"));
     }
 
     @Override
     public boolean isAccountNonExpired() {
-        throw new UnsupportedOperationException("Not implemented yet");
+        return true;
     }
 
     @Override
     public boolean isAccountNonLocked() {
-        throw new UnsupportedOperationException("Not implemented yet");
+        return true;
     }
 
     @Override
     public boolean isCredentialsNonExpired() {
-        throw new UnsupportedOperationException("Not implemented yet");
+        return true;
     }
 
     @Override
     public boolean isEnabled() {
-        throw new UnsupportedOperationException("Not implemented yet");
+        return true;
     }
 }

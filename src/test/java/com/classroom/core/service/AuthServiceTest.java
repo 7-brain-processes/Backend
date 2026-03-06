@@ -3,6 +3,7 @@ package com.classroom.core.service;
 import com.classroom.core.dto.auth.AuthResponse;
 import com.classroom.core.dto.auth.LoginRequest;
 import com.classroom.core.dto.auth.RegisterRequest;
+import com.classroom.core.exception.DuplicateResourceException;
 import com.classroom.core.model.User;
 import com.classroom.core.repository.UserRepository;
 import com.classroom.core.security.JwtProvider;
@@ -108,7 +109,7 @@ class AuthServiceTest {
         when(userRepository.existsByUsername("johndoe")).thenReturn(true);
 
         assertThatThrownBy(() -> authService.register(request))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(DuplicateResourceException.class)
                 .hasMessageContaining("already taken");
 
         verify(userRepository, never()).save(any());
