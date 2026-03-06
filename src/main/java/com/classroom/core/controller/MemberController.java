@@ -5,6 +5,9 @@ import com.classroom.core.dto.member.MemberDto;
 import com.classroom.core.model.CourseRole;
 import com.classroom.core.security.UserPrincipal;
 import com.classroom.core.service.CourseMemberService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
@@ -16,12 +19,17 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/courses/{courseId}")
+@Tag(name = "Members", description = "Course member management")
 @RequiredArgsConstructor
 public class MemberController {
 
     private final CourseMemberService courseMemberService;
 
     @GetMapping("/members")
+    @Operation(
+            summary = "List course members",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
     public ResponseEntity<PageDto<MemberDto>> listMembers(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable UUID courseId,
@@ -40,6 +48,10 @@ public class MemberController {
     }
 
     @DeleteMapping("/members/{userId}")
+    @Operation(
+            summary = "Remove member from course",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void removeMember(
             @AuthenticationPrincipal UserPrincipal principal,
@@ -50,6 +62,10 @@ public class MemberController {
     }
 
     @PostMapping("/leave")
+    @Operation(
+            summary = "Leave course",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void leaveCourse(
             @AuthenticationPrincipal UserPrincipal principal,

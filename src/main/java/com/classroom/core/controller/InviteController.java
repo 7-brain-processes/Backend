@@ -5,6 +5,9 @@ import com.classroom.core.dto.invite.CreateInviteRequest;
 import com.classroom.core.dto.invite.InviteDto;
 import com.classroom.core.security.UserPrincipal;
 import com.classroom.core.service.InviteService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -17,12 +20,17 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1")
+@Tag(name = "Invites", description = "Course invites")
 @RequiredArgsConstructor
 public class InviteController {
 
     private final InviteService inviteService;
 
     @GetMapping("/courses/{courseId}/invites")
+    @Operation(
+            summary = "List course invites",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
     public ResponseEntity<List<InviteDto>> listInvites(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable UUID courseId) {
@@ -31,6 +39,10 @@ public class InviteController {
     }
 
     @PostMapping("/courses/{courseId}/invites")
+    @Operation(
+            summary = "Create invite",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
     public ResponseEntity<InviteDto> createInvite(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable UUID courseId,
@@ -41,6 +53,10 @@ public class InviteController {
     }
 
     @DeleteMapping("/courses/{courseId}/invites/{inviteId}")
+    @Operation(
+            summary = "Revoke invite",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void revokeInvite(
             @AuthenticationPrincipal UserPrincipal principal,
@@ -51,6 +67,10 @@ public class InviteController {
     }
 
     @PostMapping("/invites/{code}/join")
+    @Operation(
+            summary = "Join course by invite code",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
     public ResponseEntity<CourseDto> joinCourse(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable String code) {

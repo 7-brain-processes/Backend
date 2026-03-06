@@ -7,6 +7,9 @@ import com.classroom.core.dto.post.UpdatePostRequest;
 import com.classroom.core.model.PostType;
 import com.classroom.core.security.UserPrincipal;
 import com.classroom.core.service.PostService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -19,12 +22,17 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/courses/{courseId}/posts")
+@Tag(name = "Posts", description = "Course posts")
 @RequiredArgsConstructor
 public class PostController {
 
     private final PostService postService;
 
     @GetMapping
+    @Operation(
+            summary = "List course posts",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
     public ResponseEntity<PageDto<PostDto>> listPosts(
             @PathVariable UUID courseId,
             @AuthenticationPrincipal UserPrincipal principal,
@@ -37,6 +45,10 @@ public class PostController {
     }
 
     @PostMapping
+    @Operation(
+            summary = "Create post",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
     public ResponseEntity<PostDto> createPost(
             @PathVariable UUID courseId,
             @AuthenticationPrincipal UserPrincipal principal,
@@ -47,6 +59,10 @@ public class PostController {
     }
 
     @GetMapping("/{postId}")
+    @Operation(
+            summary = "Get post details",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
     public ResponseEntity<PostDto> getPost(
             @PathVariable UUID courseId,
             @PathVariable UUID postId,
@@ -57,6 +73,10 @@ public class PostController {
     }
 
     @PutMapping("/{postId}")
+    @Operation(
+            summary = "Update post",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
     public ResponseEntity<PostDto> updatePost(
             @PathVariable UUID courseId,
             @PathVariable UUID postId,
@@ -69,6 +89,10 @@ public class PostController {
 
     @DeleteMapping("/{postId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(
+            summary = "Delete post",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
     public void deletePost(
             @PathVariable UUID courseId,
             @PathVariable UUID postId,
