@@ -5,10 +5,11 @@ import com.classroom.core.dto.member.MemberDto;
 import com.classroom.core.model.CourseRole;
 import com.classroom.core.security.UserPrincipal;
 import com.classroom.core.service.CourseMemberService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -27,7 +28,15 @@ public class MemberController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) CourseRole role) {
-        throw new UnsupportedOperationException("Not implemented yet");
+
+        var result = courseMemberService.listMembers(
+                courseId,
+                role,
+                PageRequest.of(page, size),
+                principal.getId()
+        );
+
+        return ResponseEntity.ok(PageDto.from(result));
     }
 
     @DeleteMapping("/members/{userId}")
@@ -36,7 +45,8 @@ public class MemberController {
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable UUID courseId,
             @PathVariable UUID userId) {
-        throw new UnsupportedOperationException("Not implemented yet");
+
+        courseMemberService.removeMember(courseId, userId, principal.getId());
     }
 
     @PostMapping("/leave")
@@ -44,6 +54,7 @@ public class MemberController {
     public void leaveCourse(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable UUID courseId) {
-        throw new UnsupportedOperationException("Not implemented yet");
+
+        courseMemberService.leaveCourse(courseId, principal.getId());
     }
 }
