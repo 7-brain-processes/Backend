@@ -8,11 +8,12 @@ import com.classroom.core.model.CourseRole;
 import com.classroom.core.security.UserPrincipal;
 import com.classroom.core.service.CourseService;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -30,21 +31,32 @@ public class CourseController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) CourseRole role) {
-        throw new UnsupportedOperationException("Not implemented yet");
+
+        Page<CourseDto> result = courseService.listMyCourses(
+                principal.getId(),
+                role,
+                PageRequest.of(page, size)
+        );
+
+        return ResponseEntity.ok(PageDto.from(result));
     }
 
     @PostMapping
     public ResponseEntity<CourseDto> createCourse(
             @AuthenticationPrincipal UserPrincipal principal,
             @Valid @RequestBody CreateCourseRequest request) {
-        throw new UnsupportedOperationException("Not implemented yet");
+
+        CourseDto result = courseService.createCourse(request, principal.getId());
+        return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
 
     @GetMapping("/{courseId}")
     public ResponseEntity<CourseDto> getCourse(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable UUID courseId) {
-        throw new UnsupportedOperationException("Not implemented yet");
+
+        CourseDto result = courseService.getCourse(courseId, principal.getId());
+        return ResponseEntity.ok(result);
     }
 
     @PutMapping("/{courseId}")
@@ -52,7 +64,9 @@ public class CourseController {
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable UUID courseId,
             @Valid @RequestBody UpdateCourseRequest request) {
-        throw new UnsupportedOperationException("Not implemented yet");
+
+        CourseDto result = courseService.updateCourse(courseId, request, principal.getId());
+        return ResponseEntity.ok(result);
     }
 
     @DeleteMapping("/{courseId}")
@@ -60,6 +74,7 @@ public class CourseController {
     public void deleteCourse(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable UUID courseId) {
-        throw new UnsupportedOperationException("Not implemented yet");
+
+        courseService.deleteCourse(courseId, principal.getId());
     }
 }
