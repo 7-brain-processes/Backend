@@ -7,6 +7,9 @@ import com.classroom.core.dto.course.UpdateCourseRequest;
 import com.classroom.core.model.CourseRole;
 import com.classroom.core.security.UserPrincipal;
 import com.classroom.core.service.CourseService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -18,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 
+@Tag(name = "Courses", description = "Course management")
 @RestController
 @RequestMapping("/api/v1/courses")
 @RequiredArgsConstructor
@@ -26,6 +30,10 @@ public class CourseController {
     private final CourseService courseService;
 
     @GetMapping
+    @Operation(
+            summary = "List current user's courses",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
     public ResponseEntity<PageDto<CourseDto>> listMyCourses(
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestParam(defaultValue = "0") int page,
@@ -42,6 +50,10 @@ public class CourseController {
     }
 
     @PostMapping
+    @Operation(
+            summary = "Create Course",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
     public ResponseEntity<CourseDto> createCourse(
             @AuthenticationPrincipal UserPrincipal principal,
             @Valid @RequestBody CreateCourseRequest request) {
@@ -51,6 +63,10 @@ public class CourseController {
     }
 
     @GetMapping("/{courseId}")
+    @Operation(
+            summary = "Get course details",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
     public ResponseEntity<CourseDto> getCourse(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable UUID courseId) {
@@ -60,6 +76,10 @@ public class CourseController {
     }
 
     @PutMapping("/{courseId}")
+    @Operation(
+            summary = "Update course",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
     public ResponseEntity<CourseDto> updateCourse(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable UUID courseId,
@@ -71,6 +91,10 @@ public class CourseController {
 
     @DeleteMapping("/{courseId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(
+            summary = "Delete course",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
     public void deleteCourse(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable UUID courseId) {
