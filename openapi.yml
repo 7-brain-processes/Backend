@@ -1,0 +1,1560 @@
+openapi: 3.0.3
+info:
+  title: Classroom API
+  description: Google Classroom clone
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local dev
+
+tags:
+  - name: Auth
+    description: Registration and login
+  - name: Courses
+    description: Course CRUD and membership
+  - name: Members
+    description: Course member management
+  - name: Invites
+    description: Invite links for teachers and students
+  - name: Posts
+    description: Course posts (materials / tasks)
+  - name: Post Materials
+    description: File attachments on posts
+  - name: Comments
+    description: Public comments on posts
+  - name: Solutions
+    description: Student task solutions (answers)
+  - name: Solution Files
+    description: File attachments on solutions
+  - name: Grading
+    description: Marks and teacher comments on solutions
+
+security:
+  - bearerAuth: []
+
+paths:
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new user
+      operationId: register
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "409":
+          description: Username already taken
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Authenticate and receive a token
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Get current authenticated user profile
+      operationId: getCurrentUser
+      responses:
+        "200":
+          description: Current user info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserDto"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /courses:
+    get:
+      tags: [Courses]
+      summary: List courses the current user belongs to
+      operationId: listMyCourses
+      parameters:
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/SizeParam"
+        - name: role
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/CourseRole"
+          description: Filter by user's role in course
+      responses:
+        "200":
+          description: Paginated list of courses
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PageCourseDto"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+    post:
+      tags: [Courses]
+      summary: Create a new course (caller becomes TEACHER)
+      operationId: createCourse
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCourseRequest"
+      responses:
+        "201":
+          description: Course created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CourseDto"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /courses/{courseId}:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+
+    get:
+      tags: [Courses]
+      summary: Get course details
+      operationId: getCourse
+      responses:
+        "200":
+          description: Course details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CourseDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      tags: [Courses]
+      summary: Update course (teacher only)
+      operationId: updateCourse
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCourseRequest"
+      responses:
+        "200":
+          description: Course updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CourseDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      tags: [Courses]
+      summary: Delete course (teacher only)
+      operationId: deleteCourse
+      responses:
+        "204":
+          description: Deleted
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/members:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+
+    get:
+      tags: [Members]
+      summary: List course members
+      operationId: listMembers
+      parameters:
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/SizeParam"
+        - name: role
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/CourseRole"
+      responses:
+        "200":
+          description: Paginated members
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PageMemberDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/members/{userId}:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/UserId"
+
+    delete:
+      tags: [Members]
+      summary: Remove a student from the course (teacher only)
+      operationId: removeMember
+      responses:
+        "204":
+          description: Member removed
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/leave:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+
+    post:
+      tags: [Members]
+      summary: Leave the course (current user)
+      operationId: leaveCourse
+      responses:
+        "204":
+          description: Left the course
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/invites:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+
+    get:
+      tags: [Invites]
+      summary: List active invites for the course (teacher only)
+      operationId: listInvites
+      responses:
+        "200":
+          description: List of invites
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InviteDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    post:
+      tags: [Invites]
+      summary: Create an invite code (teacher only)
+      operationId: createInvite
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateInviteRequest"
+      responses:
+        "201":
+          description: Invite created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InviteDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/invites/{inviteId}:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - name: inviteId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    delete:
+      tags: [Invites]
+      summary: Revoke an invite (teacher only)
+      operationId: revokeInvite
+      responses:
+        "204":
+          description: Invite revoked
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /invites/{code}/join:
+    parameters:
+      - name: code
+        in: path
+        required: true
+        schema:
+          type: string
+        description: The invite code
+
+    post:
+      tags: [Invites]
+      summary: Join a course using an invite code
+      operationId: joinCourse
+      responses:
+        "200":
+          description: Successfully joined
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CourseDto"
+        "404":
+          description: Invite not found or expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Already a member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /courses/{courseId}/posts:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+
+    get:
+      tags: [Posts]
+      summary: List posts in a course
+      operationId: listPosts
+      parameters:
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/SizeParam"
+        - name: type
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/PostType"
+          description: Filter by post type
+      responses:
+        "200":
+          description: Paginated posts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PagePostDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    post:
+      tags: [Posts]
+      summary: Create a post (teacher only)
+      operationId: createPost
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePostRequest"
+      responses:
+        "201":
+          description: Post created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PostDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    get:
+      tags: [Posts]
+      summary: Get post details
+      operationId: getPost
+      responses:
+        "200":
+          description: Post details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PostDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      tags: [Posts]
+      summary: Update a post (teacher only)
+      operationId: updatePost
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePostRequest"
+      responses:
+        "200":
+          description: Post updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PostDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      tags: [Posts]
+      summary: Delete a post (teacher only)
+      operationId: deletePost
+      responses:
+        "204":
+          description: Deleted
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/materials:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    get:
+      tags: [Post Materials]
+      summary: List materials attached to a post
+      operationId: listPostMaterials
+      responses:
+        "200":
+          description: List of materials
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FileDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    post:
+      tags: [Post Materials]
+      summary: Upload a material to a post (teacher only)
+      operationId: uploadPostMaterial
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: The file to upload
+      responses:
+        "201":
+          description: Material uploaded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "413":
+          description: File too large
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /courses/{courseId}/posts/{postId}/materials/{fileId}:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+      - $ref: "#/components/parameters/FileId"
+
+    delete:
+      tags: [Post Materials]
+      summary: Remove a material (teacher only)
+      operationId: deletePostMaterial
+      responses:
+        "204":
+          description: Material deleted
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/materials/{fileId}/download:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+      - $ref: "#/components/parameters/FileId"
+
+    get:
+      tags: [Post Materials]
+      summary: Download a material file
+      operationId: downloadPostMaterial
+      responses:
+        "200":
+          description: File content
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/comments:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    get:
+      tags: [Comments]
+      summary: List public comments on a post
+      operationId: listPostComments
+      parameters:
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/SizeParam"
+      responses:
+        "200":
+          description: Paginated comments
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PageCommentDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    post:
+      tags: [Comments]
+      summary: Leave a public comment on a post
+      operationId: createPostComment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCommentRequest"
+      responses:
+        "201":
+          description: Comment created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommentDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/comments/{commentId}:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+      - name: commentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    put:
+      tags: [Comments]
+      summary: Edit own comment
+      operationId: updatePostComment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCommentRequest"
+      responses:
+        "200":
+          description: Comment updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommentDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      tags: [Comments]
+      summary: Delete own comment (or teacher deletes any)
+      operationId: deletePostComment
+      responses:
+        "204":
+          description: Deleted
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/solutions:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    get:
+      tags: [Solutions]
+      summary: List all solutions for a task (teacher only)
+      operationId: listSolutions
+      parameters:
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/SizeParam"
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/SolutionStatus"
+          description: Filter by solution status
+      responses:
+        "200":
+          description: Paginated solutions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PageSolutionDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    post:
+      tags: [Solutions]
+      summary: Submit a solution for a task (student only)
+      operationId: createSolution
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSolutionRequest"
+      responses:
+        "201":
+          description: Solution submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SolutionDto"
+        "400":
+          description: Post is not a task or deadline passed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Solution already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /courses/{courseId}/posts/{postId}/solutions/my:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    get:
+      tags: [Solutions]
+      summary: Get the current student's solution for a task
+      operationId: getMySolution
+      responses:
+        "200":
+          description: Student's solution
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SolutionDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/solutions/{solutionId}:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+      - $ref: "#/components/parameters/SolutionId"
+
+    get:
+      tags: [Solutions]
+      summary: Get a specific solution (teacher or owner)
+      operationId: getSolution
+      responses:
+        "200":
+          description: Solution details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SolutionDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      tags: [Solutions]
+      summary: Update solution text (student, own only)
+      operationId: updateSolution
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSolutionRequest"
+      responses:
+        "200":
+          description: Solution updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SolutionDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      tags: [Solutions]
+      summary: Delete a solution (student, own only)
+      operationId: deleteSolution
+      responses:
+        "204":
+          description: Deleted
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/solutions/{solutionId}/files:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+      - $ref: "#/components/parameters/SolutionId"
+
+    get:
+      tags: [Solution Files]
+      summary: List files attached to a solution
+      operationId: listSolutionFiles
+      responses:
+        "200":
+          description: List of files
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FileDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    post:
+      tags: [Solution Files]
+      summary: Upload a file to a solution (student, own only)
+      operationId: uploadSolutionFile
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: File uploaded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "413":
+          description: File too large
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /courses/{courseId}/posts/{postId}/solutions/{solutionId}/files/{fileId}:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+      - $ref: "#/components/parameters/SolutionId"
+      - $ref: "#/components/parameters/FileId"
+
+    delete:
+      tags: [Solution Files]
+      summary: Remove a file from a solution (student, own only)
+      operationId: deleteSolutionFile
+      responses:
+        "204":
+          description: Deleted
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/solutions/{solutionId}/files/{fileId}/download:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+      - $ref: "#/components/parameters/SolutionId"
+      - $ref: "#/components/parameters/FileId"
+
+    get:
+      tags: [Solution Files]
+      summary: Download a solution file
+      operationId: downloadSolutionFile
+      responses:
+        "200":
+          description: File content
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/solutions/{solutionId}/grade:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+      - $ref: "#/components/parameters/SolutionId"
+
+    put:
+      tags: [Grading]
+      summary: Set or update a grade for a solution (teacher only)
+      operationId: gradeSolution
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GradeRequest"
+      responses:
+        "200":
+          description: Grade saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SolutionDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/solutions/{solutionId}/comments:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+      - $ref: "#/components/parameters/SolutionId"
+
+    get:
+      tags: [Grading]
+      summary: List teacher comments on a solution
+      operationId: listSolutionComments
+      parameters:
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/SizeParam"
+      responses:
+        "200":
+          description: Paginated comments
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PageCommentDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    post:
+      tags: [Grading]
+      summary: Leave a comment on a solution (teacher only)
+      operationId: createSolutionComment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCommentRequest"
+      responses:
+        "201":
+          description: Comment created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommentDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/solutions/{solutionId}/comments/{commentId}:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+      - $ref: "#/components/parameters/SolutionId"
+      - name: commentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    put:
+      tags: [Grading]
+      summary: Edit a solution comment (teacher only)
+      operationId: updateSolutionComment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCommentRequest"
+      responses:
+        "200":
+          description: Comment updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommentDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      tags: [Grading]
+      summary: Delete a solution comment (teacher only)
+      operationId: deleteSolutionComment
+      responses:
+        "204":
+          description: Deleted
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    CourseId:
+      name: courseId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+    PostId:
+      name: postId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+    SolutionId:
+      name: solutionId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+    FileId:
+      name: fileId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+    UserId:
+      name: userId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+    PageParam:
+      name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+      description: Zero-based page index
+
+    SizeParam:
+      name: size
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+      description: Page size
+
+  responses:
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  schemas:
+    CourseRole:
+      type: string
+      enum: [TEACHER, STUDENT]
+
+    PostType:
+      type: string
+      enum: [MATERIAL, TASK]
+
+    SolutionStatus:
+      type: string
+      enum: [SUBMITTED, GRADED]
+
+    RegisterRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 50
+          example: johndoe
+        password:
+          type: string
+          minLength: 6
+          maxLength: 128
+          format: password
+          example: "s3cureP@ss"
+        displayName:
+          type: string
+          maxLength: 100
+          example: John Doe
+
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          example: johndoe
+        password:
+          type: string
+          format: password
+          example: "s3cureP@ss"
+
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: JWT access token
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        user:
+          $ref: "#/components/schemas/UserDto"
+
+    UserDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 550e8400-e29b-41d4-a716-446655440000
+        username:
+          type: string
+          example: johndoe
+        displayName:
+          type: string
+          example: John Doe
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateCourseRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          example: Data Structures & Algorithms
+        description:
+          type: string
+          maxLength: 2000
+          example: Spring 2026 section
+
+    UpdateCourseRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 2000
+
+    CourseDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 7c9e6679-7425-40de-944b-e07fc1f90ae7
+        name:
+          type: string
+          example: Data Structures & Algorithms
+        description:
+          type: string
+          example: Spring 2026 section
+        createdAt:
+          type: string
+          format: date-time
+        currentUserRole:
+          $ref: "#/components/schemas/CourseRole"
+        teacherCount:
+          type: integer
+          example: 2
+        studentCount:
+          type: integer
+          example: 30
+
+    PageCourseDto:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/CourseDto"
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+
+    MemberDto:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/UserDto"
+        role:
+          $ref: "#/components/schemas/CourseRole"
+        joinedAt:
+          type: string
+          format: date-time
+
+    PageMemberDto:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/MemberDto"
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+
+    CreateInviteRequest:
+      type: object
+      required: [role]
+      properties:
+        role:
+          $ref: "#/components/schemas/CourseRole"
+        expiresAt:
+          type: string
+          format: date-time
+          description: Optional expiry; null = never expires
+        maxUses:
+          type: integer
+          minimum: 1
+          description: Optional usage limit; null = unlimited
+
+    InviteDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+          example: aBcD1234
+        role:
+          $ref: "#/components/schemas/CourseRole"
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        maxUses:
+          type: integer
+          nullable: true
+        currentUses:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+
+    CreatePostRequest:
+      type: object
+      required: [title, type]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 300
+          example: "Week 3 — Sorting Algorithms"
+        content:
+          type: string
+          maxLength: 10000
+          description: Post body / description (Markdown supported)
+          example: "Read chapter 4 and complete the exercises."
+        type:
+          $ref: "#/components/schemas/PostType"
+        deadline:
+          type: string
+          format: date-time
+          description: Required when type = TASK; ignored for MATERIAL
+          nullable: true
+
+    UpdatePostRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 300
+        content:
+          type: string
+          maxLength: 10000
+        deadline:
+          type: string
+          format: date-time
+          nullable: true
+
+    PostDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          example: "Week 3 — Sorting Algorithms"
+        content:
+          type: string
+        type:
+          $ref: "#/components/schemas/PostType"
+        deadline:
+          type: string
+          format: date-time
+          nullable: true
+        author:
+          $ref: "#/components/schemas/UserDto"
+        materialsCount:
+          type: integer
+          description: Number of attached files
+        commentsCount:
+          type: integer
+        solutionsCount:
+          type: integer
+          description: Only present for TASK posts (teacher view)
+        mySolutionId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Current student's solution id, null if not submitted
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PagePostDto:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/PostDto"
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+
+    FileDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        originalName:
+          type: string
+          example: lecture_03.pdf
+        contentType:
+          type: string
+          example: application/pdf
+        sizeBytes:
+          type: integer
+          format: int64
+          example: 204800
+        uploadedAt:
+          type: string
+          format: date-time
+
+    CreateCommentRequest:
+      type: object
+      required: [text]
+      properties:
+        text:
+          type: string
+          minLength: 1
+          maxLength: 5000
+          example: "Could you clarify question 3?"
+
+    CommentDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        text:
+          type: string
+        author:
+          $ref: "#/components/schemas/UserDto"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PageCommentDto:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/CommentDto"
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+
+    CreateSolutionRequest:
+      type: object
+      properties:
+        text:
+          type: string
+          maxLength: 10000
+          description: Solution text / answer body
+          example: "My implementation uses merge sort because..."
+
+    SolutionDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        text:
+          type: string
+        status:
+          $ref: "#/components/schemas/SolutionStatus"
+        grade:
+          type: integer
+          minimum: 0
+          maximum: 100
+          nullable: true
+          description: "Null until graded; 0-100"
+        filesCount:
+          type: integer
+        student:
+          $ref: "#/components/schemas/UserDto"
+        submittedAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        gradedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    PageSolutionDto:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/SolutionDto"
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+
+    GradeRequest:
+      type: object
+      required: [grade]
+      properties:
+        grade:
+          type: integer
+          minimum: 0
+          maximum: 100
+          example: 85
+        comment:
+          type: string
+          maxLength: 5000
+          description: Optional comment along with the grade
+          example: "Good work, but improve error handling."
+
+    ErrorResponse:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: integer
+          example: 404
+        error:
+          type: string
+          example: Not Found
+        message:
+          type: string
+          example: Course not found
+        path:
+          type: string
+          example: /api/v1/courses/999

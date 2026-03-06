@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: core
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:classroom}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  servlet:
+    multipart:
+      max-file-size: ${MAX_FILE_SIZE:10MB}
+      max-request-size: ${MAX_REQUEST_SIZE:10MB}
+
+jwt:
+  secret: ${JWT_SECRET:Y2xhc3Nyb29tLWFwcC1zZWNyZXQta2V5LXRoYXQtaXMtbG9uZy1lbm91Z2gtZm9yLWhtYWMtc2hhMjU2}
+  expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+
+app:
+  storage:
+    path: ${STORAGE_PATH:./uploads}
