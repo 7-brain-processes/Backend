@@ -6,10 +6,10 @@ import com.classroom.core.dto.invite.InviteDto;
 import com.classroom.core.security.UserPrincipal;
 import com.classroom.core.service.InviteService;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -26,7 +26,8 @@ public class InviteController {
     public ResponseEntity<List<InviteDto>> listInvites(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable UUID courseId) {
-        throw new UnsupportedOperationException("Not implemented yet");
+
+        return ResponseEntity.ok(inviteService.listInvites(courseId, principal.getId()));
     }
 
     @PostMapping("/courses/{courseId}/invites")
@@ -34,7 +35,9 @@ public class InviteController {
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable UUID courseId,
             @Valid @RequestBody CreateInviteRequest request) {
-        throw new UnsupportedOperationException("Not implemented yet");
+
+        InviteDto result = inviteService.createInvite(courseId, request, principal.getId());
+        return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
 
     @DeleteMapping("/courses/{courseId}/invites/{inviteId}")
@@ -43,13 +46,15 @@ public class InviteController {
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable UUID courseId,
             @PathVariable UUID inviteId) {
-        throw new UnsupportedOperationException("Not implemented yet");
+
+        inviteService.revokeInvite(courseId, inviteId, principal.getId());
     }
 
     @PostMapping("/invites/{code}/join")
     public ResponseEntity<CourseDto> joinCourse(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable String code) {
-        throw new UnsupportedOperationException("Not implemented yet");
+
+        return ResponseEntity.ok(inviteService.joinCourse(code, principal.getId()));
     }
 }
