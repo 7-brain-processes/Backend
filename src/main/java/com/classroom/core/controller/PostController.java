@@ -8,10 +8,11 @@ import com.classroom.core.model.PostType;
 import com.classroom.core.security.UserPrincipal;
 import com.classroom.core.service.PostService;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -25,45 +26,54 @@ public class PostController {
 
     @GetMapping
     public ResponseEntity<PageDto<PostDto>> listPosts(
-            @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable UUID courseId,
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestParam(required = false) PostType type,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) PostType type) {
-        throw new UnsupportedOperationException("Not implemented yet");
+            @RequestParam(defaultValue = "20") int size) {
+
+        var result = postService.listPosts(courseId, type, PageRequest.of(page, size), principal.getId());
+        return ResponseEntity.ok(PageDto.from(result));
     }
 
     @PostMapping
     public ResponseEntity<PostDto> createPost(
-            @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable UUID courseId,
+            @AuthenticationPrincipal UserPrincipal principal,
             @Valid @RequestBody CreatePostRequest request) {
-        throw new UnsupportedOperationException("Not implemented yet");
+
+        var result = postService.createPost(courseId, request, principal.getId());
+        return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
 
     @GetMapping("/{postId}")
     public ResponseEntity<PostDto> getPost(
-            @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable UUID courseId,
-            @PathVariable UUID postId) {
-        throw new UnsupportedOperationException("Not implemented yet");
+            @PathVariable UUID postId,
+            @AuthenticationPrincipal UserPrincipal principal) {
+
+        var result = postService.getPost(courseId, postId, principal.getId());
+        return ResponseEntity.ok(result);
     }
 
     @PutMapping("/{postId}")
     public ResponseEntity<PostDto> updatePost(
-            @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable UUID courseId,
             @PathVariable UUID postId,
+            @AuthenticationPrincipal UserPrincipal principal,
             @Valid @RequestBody UpdatePostRequest request) {
-        throw new UnsupportedOperationException("Not implemented yet");
+
+        var result = postService.updatePost(courseId, postId, request, principal.getId());
+        return ResponseEntity.ok(result);
     }
 
     @DeleteMapping("/{postId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deletePost(
-            @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable UUID courseId,
-            @PathVariable UUID postId) {
-        throw new UnsupportedOperationException("Not implemented yet");
+            @PathVariable UUID postId,
+            @AuthenticationPrincipal UserPrincipal principal) {
+
+        postService.deletePost(courseId, postId, principal.getId());
     }
 }
