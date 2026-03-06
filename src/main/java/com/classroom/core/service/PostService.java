@@ -19,11 +19,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class PostService {
 
     private final PostRepository postRepository;
@@ -41,6 +43,7 @@ public class PostService {
         return posts.map(this::toDto);
     }
 
+    @Transactional
     public PostDto createPost(UUID courseId, CreatePostRequest request, UUID userId) {
         Course course = getCourseOrThrow(courseId);
         ensureTeacher(courseId, userId);
@@ -72,6 +75,7 @@ public class PostService {
         return toDto(post);
     }
 
+    @Transactional
     public PostDto updatePost(UUID courseId, UUID postId, UpdatePostRequest request, UUID userId) {
         Course course = getCourseOrThrow(courseId);
         ensureTeacher(courseId, userId);
@@ -97,6 +101,7 @@ public class PostService {
         return toDto(saved);
     }
 
+    @Transactional
     public void deletePost(UUID courseId, UUID postId, UUID userId) {
         Course course = getCourseOrThrow(courseId);
         ensureTeacher(courseId, userId);
@@ -109,6 +114,7 @@ public class PostService {
         }
 
         postRepository.delete(post);
+        postRepository.flush();
     }
 
     private Course getCourseOrThrow(UUID courseId) {
