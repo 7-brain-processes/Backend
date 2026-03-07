@@ -1,11 +1,19 @@
 package com.classroom.core.controller;
 
+import com.classroom.core.dto.ErrorResponse;
 import com.classroom.core.dto.PageDto;
 import com.classroom.core.dto.solution.CreateSolutionRequest;
 import com.classroom.core.dto.solution.SolutionDto;
 import com.classroom.core.model.SolutionStatus;
 import com.classroom.core.security.UserPrincipal;
 import com.classroom.core.service.SolutionService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,12 +25,31 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/courses/{courseId}/posts/{postId}/solutions")
+@Tag(name = "Solutions", description = "Student task solutions (answers)")
 @RequiredArgsConstructor
 public class SolutionController {
 
     private final SolutionService solutionService;
 
     @GetMapping
+    @Operation(
+            summary = "List all solutions for a task (teacher only)",
+            operationId = "listSolutions",
+            security = @SecurityRequirement(name = "bearerAuth"),
+            parameters = {
+                    @Parameter(name = "page", description = "Zero-based page index", schema = @Schema(type = "integer", defaultValue = "0")),
+                    @Parameter(name = "size", description = "Page size", schema = @Schema(type = "integer", defaultValue = "20")),
+                    @Parameter(name = "status", description = "Filter by solution status", schema = @Schema(implementation = SolutionStatus.class))
+            },
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Paginated solutions",
+                            content = @Content(schema = @Schema(implementation = PageDto.class))),
+                    @ApiResponse(responseCode = "403", description = "Insufficient permissions",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "404", description = "Resource not found",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            }
+    )
     public ResponseEntity<PageDto<SolutionDto>> listSolutions(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable UUID courseId,
@@ -34,6 +61,23 @@ public class SolutionController {
     }
 
     @PostMapping
+    @Operation(
+            summary = "Submit a solution for a task (student only)",
+            operationId = "createSolution",
+            security = @SecurityRequirement(name = "bearerAuth"),
+            responses = {
+                    @ApiResponse(responseCode = "201", description = "Solution submitted",
+                            content = @Content(schema = @Schema(implementation = SolutionDto.class))),
+                    @ApiResponse(responseCode = "400", description = "Post is not a task or deadline passed",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "403", description = "Insufficient permissions",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "404", description = "Resource not found",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "409", description = "Solution already exists",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            }
+    )
     public ResponseEntity<SolutionDto> createSolution(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable UUID courseId,
@@ -43,6 +87,19 @@ public class SolutionController {
     }
 
     @GetMapping("/my")
+    @Operation(
+            summary = "Get the current student's solution for a task",
+            operationId = "getMySolution",
+            security = @SecurityRequirement(name = "bearerAuth"),
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Student's solution",
+                            content = @Content(schema = @Schema(implementation = SolutionDto.class))),
+                    @ApiResponse(responseCode = "403", description = "Insufficient permissions",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "404", description = "Resource not found",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            }
+    )
     public ResponseEntity<SolutionDto> getMySolution(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable UUID courseId,
@@ -51,6 +108,19 @@ public class SolutionController {
     }
 
     @GetMapping("/{solutionId}")
+    @Operation(
+            summary = "Get a specific solution (teacher or owner)",
+            operationId = "getSolution",
+            security = @SecurityRequirement(name = "bearerAuth"),
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Solution details",
+                            content = @Content(schema = @Schema(implementation = SolutionDto.class))),
+                    @ApiResponse(responseCode = "403", description = "Insufficient permissions",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "404", description = "Resource not found",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            }
+    )
     public ResponseEntity<SolutionDto> getSolution(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable UUID courseId,
@@ -60,6 +130,19 @@ public class SolutionController {
     }
 
     @PutMapping("/{solutionId}")
+    @Operation(
+            summary = "Update solution text (student, own only)",
+            operationId = "updateSolution",
+            security = @SecurityRequirement(name = "bearerAuth"),
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Solution updated",
+                            content = @Content(schema = @Schema(implementation = SolutionDto.class))),
+                    @ApiResponse(responseCode = "403", description = "Insufficient permissions",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "404", description = "Resource not found",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            }
+    )
     public ResponseEntity<SolutionDto> updateSolution(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable UUID courseId,
@@ -71,6 +154,18 @@ public class SolutionController {
 
     @DeleteMapping("/{solutionId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(
+            summary = "Delete a solution (student, own only)",
+            operationId = "deleteSolution",
+            security = @SecurityRequirement(name = "bearerAuth"),
+            responses = {
+                    @ApiResponse(responseCode = "204", description = "Deleted"),
+                    @ApiResponse(responseCode = "403", description = "Insufficient permissions",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "404", description = "Resource not found",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            }
+    )
     public void deleteSolution(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable UUID courseId,

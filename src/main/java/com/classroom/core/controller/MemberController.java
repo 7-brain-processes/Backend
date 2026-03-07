@@ -1,11 +1,16 @@
 package com.classroom.core.controller;
 
+import com.classroom.core.dto.ErrorResponse;
 import com.classroom.core.dto.PageDto;
 import com.classroom.core.dto.member.MemberDto;
 import com.classroom.core.model.CourseRole;
 import com.classroom.core.security.UserPrincipal;
 import com.classroom.core.service.CourseMemberService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +33,21 @@ public class MemberController {
     @GetMapping("/members")
     @Operation(
             summary = "List course members",
-            security = @SecurityRequirement(name = "bearerAuth")
+            operationId = "listMembers",
+            security = @SecurityRequirement(name = "bearerAuth"),
+            parameters = {
+                    @Parameter(name = "page", description = "Zero-based page index", schema = @Schema(type = "integer", defaultValue = "0")),
+                    @Parameter(name = "size", description = "Page size", schema = @Schema(type = "integer", defaultValue = "20")),
+                    @Parameter(name = "role", description = "Filter by role", schema = @Schema(implementation = CourseRole.class))
+            },
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Paginated members",
+                            content = @Content(schema = @Schema(implementation = PageDto.class))),
+                    @ApiResponse(responseCode = "403", description = "Insufficient permissions",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "404", description = "Resource not found",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            }
     )
     public ResponseEntity<PageDto<MemberDto>> listMembers(
             @AuthenticationPrincipal UserPrincipal principal,
@@ -49,8 +68,16 @@ public class MemberController {
 
     @DeleteMapping("/members/{userId}")
     @Operation(
-            summary = "Remove member from course",
-            security = @SecurityRequirement(name = "bearerAuth")
+            summary = "Remove a student from the course (teacher only)",
+            operationId = "removeMember",
+            security = @SecurityRequirement(name = "bearerAuth"),
+            responses = {
+                    @ApiResponse(responseCode = "204", description = "Member removed"),
+                    @ApiResponse(responseCode = "403", description = "Insufficient permissions",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "404", description = "Resource not found",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            }
     )
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void removeMember(
@@ -63,8 +90,16 @@ public class MemberController {
 
     @PostMapping("/leave")
     @Operation(
-            summary = "Leave course",
-            security = @SecurityRequirement(name = "bearerAuth")
+            summary = "Leave the course (current user)",
+            operationId = "leaveCourse",
+            security = @SecurityRequirement(name = "bearerAuth"),
+            responses = {
+                    @ApiResponse(responseCode = "204", description = "Left the course"),
+                    @ApiResponse(responseCode = "403", description = "Insufficient permissions",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "404", description = "Resource not found",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            }
     )
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void leaveCourse(

@@ -1,11 +1,16 @@
 package com.classroom.core.controller;
 
+import com.classroom.core.dto.ErrorResponse;
 import com.classroom.core.dto.course.CourseDto;
 import com.classroom.core.dto.invite.CreateInviteRequest;
 import com.classroom.core.dto.invite.InviteDto;
 import com.classroom.core.security.UserPrincipal;
 import com.classroom.core.service.InviteService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -20,7 +25,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1")
-@Tag(name = "Invites", description = "Course invites")
+@Tag(name = "Invites", description = "Invite links for teachers and students")
 @RequiredArgsConstructor
 public class InviteController {
 
@@ -28,8 +33,17 @@ public class InviteController {
 
     @GetMapping("/courses/{courseId}/invites")
     @Operation(
-            summary = "List course invites",
-            security = @SecurityRequirement(name = "bearerAuth")
+            summary = "List active invites for the course (teacher only)",
+            operationId = "listInvites",
+            security = @SecurityRequirement(name = "bearerAuth"),
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "List of invites",
+                            content = @Content(array = @ArraySchema(schema = @Schema(implementation = InviteDto.class)))),
+                    @ApiResponse(responseCode = "403", description = "Insufficient permissions",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "404", description = "Resource not found",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            }
     )
     public ResponseEntity<List<InviteDto>> listInvites(
             @AuthenticationPrincipal UserPrincipal principal,
@@ -40,8 +54,17 @@ public class InviteController {
 
     @PostMapping("/courses/{courseId}/invites")
     @Operation(
-            summary = "Create invite",
-            security = @SecurityRequirement(name = "bearerAuth")
+            summary = "Create an invite code (teacher only)",
+            operationId = "createInvite",
+            security = @SecurityRequirement(name = "bearerAuth"),
+            responses = {
+                    @ApiResponse(responseCode = "201", description = "Invite created",
+                            content = @Content(schema = @Schema(implementation = InviteDto.class))),
+                    @ApiResponse(responseCode = "403", description = "Insufficient permissions",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "404", description = "Resource not found",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            }
     )
     public ResponseEntity<InviteDto> createInvite(
             @AuthenticationPrincipal UserPrincipal principal,
@@ -54,8 +77,16 @@ public class InviteController {
 
     @DeleteMapping("/courses/{courseId}/invites/{inviteId}")
     @Operation(
-            summary = "Revoke invite",
-            security = @SecurityRequirement(name = "bearerAuth")
+            summary = "Revoke an invite (teacher only)",
+            operationId = "revokeInvite",
+            security = @SecurityRequirement(name = "bearerAuth"),
+            responses = {
+                    @ApiResponse(responseCode = "204", description = "Invite revoked"),
+                    @ApiResponse(responseCode = "403", description = "Insufficient permissions",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "404", description = "Resource not found",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            }
     )
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void revokeInvite(
@@ -68,8 +99,17 @@ public class InviteController {
 
     @PostMapping("/invites/{code}/join")
     @Operation(
-            summary = "Join course by invite code",
-            security = @SecurityRequirement(name = "bearerAuth")
+            summary = "Join a course using an invite code",
+            operationId = "joinCourse",
+            security = @SecurityRequirement(name = "bearerAuth"),
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Successfully joined",
+                            content = @Content(schema = @Schema(implementation = CourseDto.class))),
+                    @ApiResponse(responseCode = "404", description = "Invite not found or expired",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "409", description = "Already a member",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            }
     )
     public ResponseEntity<CourseDto> joinCourse(
             @AuthenticationPrincipal UserPrincipal principal,

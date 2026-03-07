@@ -1,5 +1,6 @@
 package com.classroom.core.controller;
 
+import com.classroom.core.dto.ErrorResponse;
 import com.classroom.core.dto.PageDto;
 import com.classroom.core.dto.post.CreatePostRequest;
 import com.classroom.core.dto.post.PostDto;
@@ -8,6 +9,10 @@ import com.classroom.core.model.PostType;
 import com.classroom.core.security.UserPrincipal;
 import com.classroom.core.service.PostService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -22,7 +27,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/courses/{courseId}/posts")
-@Tag(name = "Posts", description = "Course posts")
+@Tag(name = "Posts", description = "Course posts (materials / tasks)")
 @RequiredArgsConstructor
 public class PostController {
 
@@ -30,8 +35,22 @@ public class PostController {
 
     @GetMapping
     @Operation(
-            summary = "List course posts",
-            security = @SecurityRequirement(name = "bearerAuth")
+            summary = "List posts in a course",
+            operationId = "listPosts",
+            security = @SecurityRequirement(name = "bearerAuth"),
+            parameters = {
+                    @Parameter(name = "page", description = "Zero-based page index", schema = @Schema(type = "integer", defaultValue = "0")),
+                    @Parameter(name = "size", description = "Page size", schema = @Schema(type = "integer", defaultValue = "20")),
+                    @Parameter(name = "type", description = "Filter by post type", schema = @Schema(implementation = PostType.class))
+            },
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Paginated posts",
+                            content = @Content(schema = @Schema(implementation = PageDto.class))),
+                    @ApiResponse(responseCode = "403", description = "Insufficient permissions",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "404", description = "Resource not found",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            }
     )
     public ResponseEntity<PageDto<PostDto>> listPosts(
             @PathVariable UUID courseId,
@@ -46,8 +65,17 @@ public class PostController {
 
     @PostMapping
     @Operation(
-            summary = "Create post",
-            security = @SecurityRequirement(name = "bearerAuth")
+            summary = "Create a post (teacher only)",
+            operationId = "createPost",
+            security = @SecurityRequirement(name = "bearerAuth"),
+            responses = {
+                    @ApiResponse(responseCode = "201", description = "Post created",
+                            content = @Content(schema = @Schema(implementation = PostDto.class))),
+                    @ApiResponse(responseCode = "403", description = "Insufficient permissions",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "404", description = "Resource not found",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            }
     )
     public ResponseEntity<PostDto> createPost(
             @PathVariable UUID courseId,
@@ -61,7 +89,16 @@ public class PostController {
     @GetMapping("/{postId}")
     @Operation(
             summary = "Get post details",
-            security = @SecurityRequirement(name = "bearerAuth")
+            operationId = "getPost",
+            security = @SecurityRequirement(name = "bearerAuth"),
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Post details",
+                            content = @Content(schema = @Schema(implementation = PostDto.class))),
+                    @ApiResponse(responseCode = "403", description = "Insufficient permissions",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "404", description = "Resource not found",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            }
     )
     public ResponseEntity<PostDto> getPost(
             @PathVariable UUID courseId,
@@ -74,8 +111,17 @@ public class PostController {
 
     @PutMapping("/{postId}")
     @Operation(
-            summary = "Update post",
-            security = @SecurityRequirement(name = "bearerAuth")
+            summary = "Update a post (teacher only)",
+            operationId = "updatePost",
+            security = @SecurityRequirement(name = "bearerAuth"),
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Post updated",
+                            content = @Content(schema = @Schema(implementation = PostDto.class))),
+                    @ApiResponse(responseCode = "403", description = "Insufficient permissions",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "404", description = "Resource not found",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            }
     )
     public ResponseEntity<PostDto> updatePost(
             @PathVariable UUID courseId,
@@ -90,8 +136,16 @@ public class PostController {
     @DeleteMapping("/{postId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(
-            summary = "Delete post",
-            security = @SecurityRequirement(name = "bearerAuth")
+            summary = "Delete a post (teacher only)",
+            operationId = "deletePost",
+            security = @SecurityRequirement(name = "bearerAuth"),
+            responses = {
+                    @ApiResponse(responseCode = "204", description = "Deleted"),
+                    @ApiResponse(responseCode = "403", description = "Insufficient permissions",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "404", description = "Resource not found",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            }
     )
     public void deletePost(
             @PathVariable UUID courseId,
