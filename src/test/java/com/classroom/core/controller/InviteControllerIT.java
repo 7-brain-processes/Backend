@@ -31,7 +31,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfig.class)
-class InviteControllerIntegrationTest {
+class InviteControllerIT {
 
     @Autowired
     private TestRestTemplate restTemplate;

@@ -35,7 +35,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfig.class)
-class PostControllerIntegrationTest {
+class PostControllerIT {
 
     @Autowired
     private TestRestTemplate restTemplate;
