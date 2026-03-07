@@ -12,6 +12,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.net.MalformedURLException;
@@ -22,6 +23,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class SolutionFileService {
 
     private final SolutionFileRepository solutionFileRepository;
@@ -37,6 +39,7 @@ public class SolutionFileService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional
     public FileDto uploadSolutionFile(UUID courseId, UUID postId, UUID solutionId,
                                       MultipartFile file, UUID userId) {
         requireMember(courseId, userId);
@@ -52,6 +55,7 @@ public class SolutionFileService {
         return FileDto.from(solutionFileRepository.save(solutionFile));
     }
 
+    @Transactional
     public void deleteSolutionFile(UUID courseId, UUID postId, UUID solutionId,
                                    UUID fileId, UUID userId) {
         requireMember(courseId, userId);

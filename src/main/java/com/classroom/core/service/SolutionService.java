@@ -16,12 +16,14 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class SolutionService {
 
     private final SolutionRepository solutionRepository;
@@ -42,6 +44,7 @@ public class SolutionService {
         return page.map(this::toDto);
     }
 
+    @Transactional
     public SolutionDto createSolution(UUID courseId, UUID postId, CreateSolutionRequest request, UUID userId) {
         CourseMember member = requireMember(courseId, userId);
         if (member.getRole() != CourseRole.STUDENT) {
@@ -86,6 +89,7 @@ public class SolutionService {
         return toDto(solution);
     }
 
+    @Transactional
     public SolutionDto updateSolution(UUID courseId, UUID postId, UUID solutionId,
                                       CreateSolutionRequest request, UUID userId) {
         requireMember(courseId, userId);
@@ -100,6 +104,7 @@ public class SolutionService {
         return toDto(solutionRepository.save(solution));
     }
 
+    @Transactional
     public void deleteSolution(UUID courseId, UUID postId, UUID solutionId, UUID userId) {
         requireMember(courseId, userId);
         postRepository.findById(postId)
@@ -112,6 +117,7 @@ public class SolutionService {
         solutionRepository.delete(solution);
     }
 
+    @Transactional
     public SolutionDto gradeSolution(UUID courseId, UUID postId, UUID solutionId,
                                      GradeRequest request, UUID userId) {
         CourseMember member = requireMember(courseId, userId);

@@ -214,7 +214,7 @@ class MemberControllerIT {
         }
 
         @Test
-        void returns403_whenNoTokenProvided_forListMembers() {
+        void returns401_whenNoTokenProvided_forListMembers() {
             Course course = createCourseEntity("Java", "Course");
 
             ResponseEntity<String> response = restTemplate.getForEntity(
@@ -222,7 +222,7 @@ class MemberControllerIT {
                     String.class
             );
 
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         }
     }
 
@@ -293,7 +293,7 @@ class MemberControllerIT {
         }
 
         @Test
-        void returns403_whenNoTokenProvided_forRemoveMember() {
+        void returns401_whenNoTokenProvided_forRemoveMember() {
             registerAndGetToken("teacher1", "password123");
             User teacher = userByUsername("teacher1");
 
@@ -311,7 +311,7 @@ class MemberControllerIT {
                     String.class
             );
 
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         }
     }
 
@@ -368,7 +368,7 @@ class MemberControllerIT {
         }
 
         @Test
-        void returns403_whenNoTokenProvided_forLeaveCourse() {
+        void returns401_whenNoTokenProvided_forLeaveCourse() {
             Course course = createCourseEntity("Java", "Course");
 
             ResponseEntity<String> response = restTemplate.exchange(
@@ -378,7 +378,7 @@ class MemberControllerIT {
                     String.class
             );
 
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         }
     }
 }

@@ -13,6 +13,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.net.MalformedURLException;
@@ -23,6 +24,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class PostMaterialService {
 
     private final PostFileRepository postFileRepository;
@@ -38,6 +40,7 @@ public class PostMaterialService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional
     public FileDto uploadPostMaterial(UUID courseId, UUID postId, MultipartFile file, UUID userId) {
         CourseMember member = requireMember(courseId, userId);
         if (member.getRole() != CourseRole.TEACHER) {
@@ -55,6 +58,7 @@ public class PostMaterialService {
         return FileDto.from(postFileRepository.save(postFile));
     }
 
+    @Transactional
     public void deletePostMaterial(UUID courseId, UUID postId, UUID fileId, UUID userId) {
         CourseMember member = requireMember(courseId, userId);
         if (member.getRole() != CourseRole.TEACHER) {

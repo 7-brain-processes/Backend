@@ -50,7 +50,8 @@ public class SolutionFileController {
             @PathVariable UUID courseId,
             @PathVariable UUID postId,
             @PathVariable UUID solutionId) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        List<FileDto> result = solutionFileService.listSolutionFiles(courseId, postId, solutionId, principal.getId());
+        return ResponseEntity.ok(result);
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -75,7 +76,8 @@ public class SolutionFileController {
             @PathVariable UUID postId,
             @PathVariable UUID solutionId,
             @RequestParam("file") MultipartFile file) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        FileDto result = solutionFileService.uploadSolutionFile(courseId, postId, solutionId, file, principal.getId());
+        return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
 
     @DeleteMapping("/{fileId}")
@@ -98,7 +100,7 @@ public class SolutionFileController {
             @PathVariable UUID postId,
             @PathVariable UUID solutionId,
             @PathVariable UUID fileId) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        solutionFileService.deleteSolutionFile(courseId, postId, solutionId, fileId, principal.getId());
     }
 
     @GetMapping("/{fileId}/download")
@@ -121,6 +123,9 @@ public class SolutionFileController {
             @PathVariable UUID postId,
             @PathVariable UUID solutionId,
             @PathVariable UUID fileId) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        Resource resource = solutionFileService.downloadSolutionFile(courseId, postId, solutionId, fileId, principal.getId());
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .body(resource);
     }
 }

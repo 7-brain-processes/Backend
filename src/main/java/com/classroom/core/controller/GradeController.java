@@ -54,7 +54,8 @@ public class GradeController {
             @PathVariable UUID postId,
             @PathVariable UUID solutionId,
             @Valid @RequestBody GradeRequest request) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        SolutionDto result = solutionService.gradeSolution(courseId, postId, solutionId, request, principal.getId());
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping("/comments")
@@ -82,7 +83,9 @@ public class GradeController {
             @PathVariable UUID solutionId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        var result = commentService.listSolutionComments(courseId, postId, solutionId,
+                org.springframework.data.domain.PageRequest.of(page, size), principal.getId());
+        return ResponseEntity.ok(PageDto.from(result));
     }
 
     @PostMapping("/comments")
@@ -105,7 +108,8 @@ public class GradeController {
             @PathVariable UUID postId,
             @PathVariable UUID solutionId,
             @Valid @RequestBody CreateCommentRequest request) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        CommentDto result = commentService.createSolutionComment(courseId, postId, solutionId, request, principal.getId());
+        return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
 
     @PutMapping("/comments/{commentId}")
@@ -129,7 +133,8 @@ public class GradeController {
             @PathVariable UUID solutionId,
             @PathVariable UUID commentId,
             @Valid @RequestBody CreateCommentRequest request) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        CommentDto result = commentService.updateSolutionComment(courseId, postId, solutionId, commentId, request, principal.getId());
+        return ResponseEntity.ok(result);
     }
 
     @DeleteMapping("/comments/{commentId}")
@@ -152,6 +157,6 @@ public class GradeController {
             @PathVariable UUID postId,
             @PathVariable UUID solutionId,
             @PathVariable UUID commentId) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        commentService.deleteSolutionComment(courseId, postId, solutionId, commentId, principal.getId());
     }
 }

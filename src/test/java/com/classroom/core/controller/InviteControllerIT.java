@@ -201,7 +201,7 @@ class InviteControllerIT {
         }
 
         @Test
-        void returns403_whenNoTokenProvided_forListInvites() {
+        void returns401_whenNoTokenProvided_forListInvites() {
             Course course = createCourseEntity("Java", "Course");
 
             ResponseEntity<String> response = restTemplate.getForEntity(
@@ -209,7 +209,7 @@ class InviteControllerIT {
                     String.class
             );
 
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         }
     }
 
@@ -282,7 +282,7 @@ class InviteControllerIT {
         }
 
         @Test
-        void returns403_whenNoTokenProvided_forCreateInvite() {
+        void returns401_whenNoTokenProvided_forCreateInvite() {
             Course course = createCourseEntity("Java", "Course");
 
             CreateInviteRequest request = new CreateInviteRequest();
@@ -299,7 +299,7 @@ class InviteControllerIT {
                     String.class
             );
 
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         }
     }
 
@@ -364,7 +364,7 @@ class InviteControllerIT {
         }
 
         @Test
-        void returns403_whenNoTokenProvided_forRevokeInvite() {
+        void returns401_whenNoTokenProvided_forRevokeInvite() {
             registerAndGetToken("teacher1", "password123");
             User teacher = userByUsername("teacher1");
 
@@ -379,7 +379,7 @@ class InviteControllerIT {
                     String.class
             );
 
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         }
     }
 
@@ -520,7 +520,7 @@ class InviteControllerIT {
         }
 
         @Test
-        void returns403_whenNoTokenProvided_forJoinCourse() {
+        void returns401_whenNoTokenProvided_forJoinCourse() {
             Course course = createCourseEntity("Java", "Course");
             Invite invite = createInviteEntity(course, "JOIN1234", CourseRole.STUDENT, null, 10, 0);
 
@@ -531,7 +531,7 @@ class InviteControllerIT {
                     String.class
             );
 
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         }
     }
 }

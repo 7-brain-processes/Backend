@@ -54,7 +54,9 @@ public class CommentController {
             @PathVariable UUID postId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        var result = commentService.listPostComments(courseId, postId,
+                org.springframework.data.domain.PageRequest.of(page, size), principal.getId());
+        return ResponseEntity.ok(PageDto.from(result));
     }
 
     @PostMapping
@@ -76,7 +78,8 @@ public class CommentController {
             @PathVariable UUID courseId,
             @PathVariable UUID postId,
             @Valid @RequestBody CreateCommentRequest request) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        CommentDto result = commentService.createPostComment(courseId, postId, request, principal.getId());
+        return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
 
     @PutMapping("/{commentId}")
@@ -99,7 +102,8 @@ public class CommentController {
             @PathVariable UUID postId,
             @PathVariable UUID commentId,
             @Valid @RequestBody CreateCommentRequest request) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        CommentDto result = commentService.updatePostComment(courseId, postId, commentId, request, principal.getId());
+        return ResponseEntity.ok(result);
     }
 
     @DeleteMapping("/{commentId}")
@@ -121,6 +125,6 @@ public class CommentController {
             @PathVariable UUID courseId,
             @PathVariable UUID postId,
             @PathVariable UUID commentId) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        commentService.deletePostComment(courseId, postId, commentId, principal.getId());
     }
 }

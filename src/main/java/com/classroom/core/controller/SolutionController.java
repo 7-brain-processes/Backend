@@ -57,7 +57,9 @@ public class SolutionController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) SolutionStatus status) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        var result = solutionService.listSolutions(courseId, postId, status,
+                org.springframework.data.domain.PageRequest.of(page, size), principal.getId());
+        return ResponseEntity.ok(PageDto.from(result));
     }
 
     @PostMapping
@@ -83,7 +85,8 @@ public class SolutionController {
             @PathVariable UUID courseId,
             @PathVariable UUID postId,
             @Valid @RequestBody CreateSolutionRequest request) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        SolutionDto result = solutionService.createSolution(courseId, postId, request, principal.getId());
+        return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
 
     @GetMapping("/my")
@@ -104,7 +107,8 @@ public class SolutionController {
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable UUID courseId,
             @PathVariable UUID postId) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        SolutionDto result = solutionService.getMySolution(courseId, postId, principal.getId());
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping("/{solutionId}")
@@ -126,7 +130,8 @@ public class SolutionController {
             @PathVariable UUID courseId,
             @PathVariable UUID postId,
             @PathVariable UUID solutionId) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        SolutionDto result = solutionService.getSolution(courseId, postId, solutionId, principal.getId());
+        return ResponseEntity.ok(result);
     }
 
     @PutMapping("/{solutionId}")
@@ -149,7 +154,8 @@ public class SolutionController {
             @PathVariable UUID postId,
             @PathVariable UUID solutionId,
             @Valid @RequestBody CreateSolutionRequest request) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        SolutionDto result = solutionService.updateSolution(courseId, postId, solutionId, request, principal.getId());
+        return ResponseEntity.ok(result);
     }
 
     @DeleteMapping("/{solutionId}")
@@ -171,6 +177,6 @@ public class SolutionController {
             @PathVariable UUID courseId,
             @PathVariable UUID postId,
             @PathVariable UUID solutionId) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        solutionService.deleteSolution(courseId, postId, solutionId, principal.getId());
     }
 }

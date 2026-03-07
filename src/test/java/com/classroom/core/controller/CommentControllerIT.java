@@ -130,10 +130,10 @@ class CommentControllerIT {
         }
 
         @Test
-        void returns403_withoutToken() {
+        void returns401_withoutToken() {
             Course c = courseRepository.save(Course.builder().name("C1").build());
             var resp = restTemplate.getForEntity(base(c.getId(), UUID.randomUUID()), String.class);
-            assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+            assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         }
     }
 

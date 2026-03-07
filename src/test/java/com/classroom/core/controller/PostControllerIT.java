@@ -222,7 +222,7 @@ class PostControllerIT {
         }
 
         @Test
-        void returns403_whenNoTokenProvided_forCreate() {
+        void returns401_whenNoTokenProvided_forCreate() {
             CreatePostRequest request = new CreatePostRequest();
             request.setTitle("Week 1");
             request.setContent("Read chapter 1");
@@ -240,7 +240,7 @@ class PostControllerIT {
                     String.class
             );
 
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         }
     }
 
@@ -313,7 +313,7 @@ class PostControllerIT {
         }
 
         @Test
-        void returns403_whenNoTokenProvided_forList() {
+        void returns401_whenNoTokenProvided_forList() {
             Course course = createCourseEntity("Java", "Course");
 
             ResponseEntity<String> response = restTemplate.getForEntity(
@@ -321,7 +321,7 @@ class PostControllerIT {
                     String.class
             );
 
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         }
     }
 

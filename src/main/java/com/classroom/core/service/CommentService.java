@@ -17,11 +17,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class CommentService {
 
     private final CommentRepository commentRepository;
@@ -36,6 +38,7 @@ public class CommentService {
         return commentRepository.findByPostId(postId, pageable).map(this::toDto);
     }
 
+    @Transactional
     public CommentDto createPostComment(UUID courseId, UUID postId, CreateCommentRequest request, UUID userId) {
         CourseMember member = requireMember(courseId, userId);
         var post = postRepository.findById(postId)
@@ -48,6 +51,7 @@ public class CommentService {
         return toDto(commentRepository.save(comment));
     }
 
+    @Transactional
     public CommentDto updatePostComment(UUID courseId, UUID postId, UUID commentId,
                                         CreateCommentRequest request, UUID userId) {
         requireMember(courseId, userId);
@@ -60,6 +64,7 @@ public class CommentService {
         return toDto(commentRepository.save(comment));
     }
 
+    @Transactional
     public void deletePostComment(UUID courseId, UUID postId, UUID commentId, UUID userId) {
         CourseMember member = requireMember(courseId, userId);
         Comment comment = commentRepository.findById(commentId)
@@ -78,6 +83,7 @@ public class CommentService {
         return commentRepository.findBySolutionId(solutionId, pageable).map(this::toDto);
     }
 
+    @Transactional
     public CommentDto createSolutionComment(UUID courseId, UUID postId, UUID solutionId,
                                             CreateCommentRequest request, UUID userId) {
         CourseMember member = requireMember(courseId, userId);
@@ -94,6 +100,7 @@ public class CommentService {
         return toDto(commentRepository.save(comment));
     }
 
+    @Transactional
     public CommentDto updateSolutionComment(UUID courseId, UUID postId, UUID solutionId, UUID commentId,
                                             CreateCommentRequest request, UUID userId) {
         requireMember(courseId, userId);
@@ -106,6 +113,7 @@ public class CommentService {
         return toDto(commentRepository.save(comment));
     }
 
+    @Transactional
     public void deleteSolutionComment(UUID courseId, UUID postId, UUID solutionId,
                                       UUID commentId, UUID userId) {
         CourseMember member = requireMember(courseId, userId);
