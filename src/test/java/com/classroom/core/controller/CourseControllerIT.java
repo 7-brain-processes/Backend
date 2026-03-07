@@ -30,7 +30,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(TestcontainersConfig.class)
-class CourseControllerIntegrationTest {
+class CourseControllerIT {
 
     @Autowired
     private TestRestTemplate restTemplate;
@@ -197,7 +197,7 @@ class CourseControllerIntegrationTest {
                     String.class
             );
 
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         }
     }
 
@@ -352,7 +352,7 @@ class CourseControllerIntegrationTest {
                     String.class
             );
 
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         }
     }
 
