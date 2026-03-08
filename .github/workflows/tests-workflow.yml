@@ -4,20 +4,26 @@ on:
   push:
     branches: [main, develop]
     paths:
-      - 'backend/**'
       - '.github/workflows/backend-tests.yml'
+      - 'src/**'
+      - '.mvn/**'
+      - 'pom.xml'
+      - 'mvnw'
+      - 'Dockerfile'
   pull_request:
     branches: [main, develop]
     paths:
-      - 'backend/**'
       - '.github/workflows/backend-tests.yml'
+      - 'src/**'
+      - '.mvn/**'
+      - 'pom.xml'
+      - 'mvnw'
+      - 'Dockerfile'
+  workflow_dispatch:
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
 
     steps:
       - name: Checkout

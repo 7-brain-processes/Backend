@@ -2,22 +2,32 @@ name: Backend CI/CD
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
     paths:
-      - 'backend/**'
       - '.github/workflows/backend-deploy.yml'
+      - 'src/**'
+      - '.mvn/**'
+      - 'pom.xml'
+      - 'mvnw'
+      - 'Dockerfile'
+      - 'docker-compose.yml'
+      - '.env.example'
   pull_request:
-    branches: [ main ]
+    branches: [main]
     paths:
-      - 'backend/**'
       - '.github/workflows/backend-deploy.yml'
+      - 'src/**'
+      - '.mvn/**'
+      - 'pom.xml'
+      - 'mvnw'
+      - 'Dockerfile'
+      - 'docker-compose.yml'
+      - '.env.example'
+  workflow_dispatch:
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
 
     steps:
       - name: Checkout
@@ -39,9 +49,6 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: test
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
 
     steps:
       - name: Checkout
@@ -68,7 +75,7 @@ jobs:
       - name: Build and push image
         uses: docker/build-push-action@v6
         with:
-          context: ./backend
+          context: .
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -81,7 +88,7 @@ jobs:
 
     steps:
       - name: Deploy to VPS
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
@@ -90,6 +97,6 @@ jobs:
           port: ${{ secrets.VPS_PORT }}
           script: |
             cd /opt/processes/backend
-            docker compose pull
-            docker compose up -d
+            docker compose pull backend
+            docker compose up -d backend
             docker image prune -f
