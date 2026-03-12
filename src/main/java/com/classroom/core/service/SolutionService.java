@@ -134,6 +134,22 @@ public class SolutionService {
         return toDto(solutionRepository.save(solution));
     }
 
+    @Transactional
+    public SolutionDto removeGrade(UUID courseId, UUID postId, UUID solutionId, UUID userId) {
+        CourseMember member = requireMember(courseId, userId);
+        if (member.getRole() != CourseRole.TEACHER) {
+            throw new ForbiddenException("Only teachers can remove grades");
+        }
+        postRepository.findById(postId)
+                .orElseThrow(() -> new ResourceNotFoundException("Post not found"));
+        Solution solution = solutionRepository.findById(solutionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Solution not found"));
+        solution.setGrade(null);
+        solution.setStatus(SolutionStatus.SUBMITTED);
+        solution.setGradedAt(null);
+        return toDto(solutionRepository.save(solution));
+    }
+
     private CourseMember requireMember(UUID courseId, UUID userId) {
         return courseMemberRepository.findByCourseIdAndUserId(courseId, userId)
                 .orElseThrow(() -> new ForbiddenException("Not a member of this course"));
