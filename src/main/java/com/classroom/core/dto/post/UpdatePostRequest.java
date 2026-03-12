@@ -1,5 +1,6 @@
 package com.classroom.core.dto.post;
 
+import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
@@ -14,5 +15,6 @@ public class UpdatePostRequest {
     @Size(max = 10000)
     private String content;
 
+    @Future
     private Instant deadline;
 }

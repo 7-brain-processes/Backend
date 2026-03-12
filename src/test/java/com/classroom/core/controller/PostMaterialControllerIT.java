@@ -252,4 +252,45 @@ class PostMaterialControllerIT {
             assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         }
     }
+
+    @Nested
+    class DownloadPostMaterial {
+
+        @Test
+        void returns200_whenMemberDownloadsFile() {
+            String token = registerAndGetToken("teacher1");
+            User teacher = user("teacher1");
+            Course c = createCourse("C1");
+            addMember(c, teacher, CourseRole.TEACHER);
+            Post p = createPost(c, teacher);
+
+            var uploadResp = restTemplate.exchange(base(c.getId(), p.getId()),
+                    HttpMethod.POST, uploadReq(token), FileDto.class);
+            assertThat(uploadResp.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+            UUID fileId = uploadResp.getBody().getId();
+
+            var resp = restTemplate.exchange(
+                    base(c.getId(), p.getId()) + "/" + fileId + "/download",
+                    HttpMethod.GET, auth(token), byte[].class);
+
+            assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(resp.getBody()).isNotNull();
+            assertThat(resp.getBody().length).isGreaterThan(0);
+        }
+
+        @Test
+        void returns404_whenFileDoesNotExist() {
+            String token = registerAndGetToken("teacher1");
+            User teacher = user("teacher1");
+            Course c = createCourse("C1");
+            addMember(c, teacher, CourseRole.TEACHER);
+            Post p = createPost(c, teacher);
+
+            var resp = restTemplate.exchange(
+                    base(c.getId(), p.getId()) + "/" + UUID.randomUUID() + "/download",
+                    HttpMethod.GET, auth(token), String.class);
+
+            assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        }
+    }
 }

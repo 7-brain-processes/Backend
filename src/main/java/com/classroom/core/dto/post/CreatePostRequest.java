@@ -1,6 +1,7 @@
 package com.classroom.core.dto.post;
 
 import com.classroom.core.model.PostType;
+import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -21,5 +22,6 @@ public class CreatePostRequest {
     @NotNull
     private PostType type;
 
+    @Future
     private Instant deadline;
 }
