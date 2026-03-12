@@ -282,6 +282,29 @@ class InviteControllerIT {
         }
 
         @Test
+        void returns201_withExpiresAt_whenTeacherSetsExpiration() {
+            String token = registerAndGetToken("teacher1", "password123");
+            User teacher = userByUsername("teacher1");
+
+            Course course = createCourseEntity("Java", "Course");
+            addMember(course, teacher, CourseRole.TEACHER);
+
+            Instant sevenDaysFromNow = Instant.now().plusSeconds(7 * 24 * 3600);
+
+            ResponseEntity<InviteDto> response = restTemplate.exchange(
+                    "/api/v1/courses/" + course.getId() + "/invites",
+                    HttpMethod.POST,
+                    authorizedCreateInviteRequest(token, CourseRole.STUDENT, sevenDaysFromNow, 10),
+                    InviteDto.class
+            );
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getExpiresAt()).isNotNull();
+            assertThat(response.getBody().getExpiresAt()).isAfter(Instant.now());
+        }
+
+        @Test
         void returns401_whenNoTokenProvided_forCreateInvite() {
             Course course = createCourseEntity("Java", "Course");
 

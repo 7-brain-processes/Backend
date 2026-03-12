@@ -242,6 +242,33 @@ class PostControllerIT {
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         }
+
+        @Test
+        void returns400_whenDeadlineIsInThePast() {
+            String token = registerAndGetToken("teacher1", "password123");
+            User teacher = userByUsername("teacher1");
+
+            Course course = createCourseEntity("Java", "Course");
+            addMember(course, teacher, CourseRole.TEACHER);
+
+            CreatePostRequest request = new CreatePostRequest();
+            request.setTitle("Assignment 1");
+            request.setContent("Submit solution");
+            request.setType(PostType.TASK);
+            request.setDeadline(Instant.now().minusSeconds(3600));
+
+            HttpHeaders headers = bearerHeaders(token);
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            ResponseEntity<String> response = restTemplate.exchange(
+                    "/api/v1/courses/" + course.getId() + "/posts",
+                    HttpMethod.POST,
+                    new HttpEntity<>(request, headers),
+                    String.class
+            );
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        }
     }
 
     @Nested
@@ -426,6 +453,25 @@ class PostControllerIT {
                     "/api/v1/courses/" + course.getId() + "/posts/" + post.getId(),
                     HttpMethod.PUT,
                     authorizedUpdateRequest(token, "a".repeat(301), "New content", null),
+                    String.class
+            );
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        }
+
+        @Test
+        void returns400_whenUpdatingDeadlineToThePast() {
+            String token = registerAndGetToken("teacher1", "password123");
+            User teacher = userByUsername("teacher1");
+
+            Course course = createCourseEntity("Java", "Course");
+            addMember(course, teacher, CourseRole.TEACHER);
+            Post post = createPostEntity(course, teacher, "Assignment 1", PostType.TASK);
+
+            ResponseEntity<String> response = restTemplate.exchange(
+                    "/api/v1/courses/" + course.getId() + "/posts/" + post.getId(),
+                    HttpMethod.PUT,
+                    authorizedUpdateRequest(token, "Assignment 1", "Updated", Instant.now().minusSeconds(3600)),
                     String.class
             );
 

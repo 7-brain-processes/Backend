@@ -394,4 +394,58 @@ class GradeControllerIT {
             assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         }
     }
+
+    @Nested
+    class RemoveGrade {
+
+        @Test
+        void returns204_whenTeacherRemovesGrade() {
+            String tToken = registerAndGetToken("teacher1");
+            String sToken = registerAndGetToken("student1");
+            User teacher = user("teacher1");
+            User student = user("student1");
+            Course c = createCourse("C1");
+            addMember(c, teacher, CourseRole.TEACHER);
+            addMember(c, student, CourseRole.STUDENT);
+            Post task = createTask(c, teacher);
+            Solution sol = createSolution(task, student);
+
+            restTemplate.exchange(
+                    base(c.getId(), task.getId(), sol.getId()) + "/grade",
+                    HttpMethod.PUT, gradeReq(tToken, 85), SolutionDto.class);
+
+            var resp = restTemplate.exchange(
+                    base(c.getId(), task.getId(), sol.getId()) + "/grade",
+                    HttpMethod.DELETE, auth(tToken), SolutionDto.class);
+
+            assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(resp.getBody()).isNotNull();
+            assertThat(resp.getBody().getGrade()).isNull();
+            assertThat(resp.getBody().getStatus()).isEqualTo(SolutionStatus.SUBMITTED);
+            assertThat(resp.getBody().getGradedAt()).isNull();
+        }
+
+        @Test
+        void returns403_whenStudentRemovesGrade() {
+            String tToken = registerAndGetToken("teacher1");
+            String sToken = registerAndGetToken("student1");
+            User teacher = user("teacher1");
+            User student = user("student1");
+            Course c = createCourse("C1");
+            addMember(c, teacher, CourseRole.TEACHER);
+            addMember(c, student, CourseRole.STUDENT);
+            Post task = createTask(c, teacher);
+            Solution sol = createSolution(task, student);
+
+            restTemplate.exchange(
+                    base(c.getId(), task.getId(), sol.getId()) + "/grade",
+                    HttpMethod.PUT, gradeReq(tToken, 85), SolutionDto.class);
+
+            var resp = restTemplate.exchange(
+                    base(c.getId(), task.getId(), sol.getId()) + "/grade",
+                    HttpMethod.DELETE, auth(sToken), String.class);
+
+            assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        }
+    }
 }
