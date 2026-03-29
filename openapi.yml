@@ -244,6 +244,173 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /courses/{courseId}/categories:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+
+    get:
+      tags: [Courses]
+      summary: List categories for a course
+      operationId: listCourseCategories
+      responses:
+        "200":
+          description: List of course categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CourseCategoryDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    post:
+      tags: [Courses]
+      summary: Create course category (teacher only)
+      operationId: createCourseCategory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCourseCategoryRequest"
+      responses:
+        "201":
+          description: Category created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CourseCategoryDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/categories/{categoryId}:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - name: categoryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [Courses]
+      summary: Get a course category
+      operationId: getCourseCategory
+      responses:
+        "200":
+          description: Course category details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CourseCategoryDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      tags: [Courses]
+      summary: Update course category (teacher only)
+      operationId: updateCourseCategory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCourseCategoryRequest"
+      responses:
+        "200":
+          description: Category updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CourseCategoryDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      tags: [Courses]
+      summary: Delete course category (teacher only)
+      operationId: deleteCourseCategory
+      responses:
+        "204":
+          description: Category deleted
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/members/{memberId}/category:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/UserId"
+
+    get:
+      tags: [Members]
+      summary: Get member selected course category
+      operationId: getMemberCategory
+      responses:
+        "200":
+          description: Member category
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CourseCategoryDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/members/me/category:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+
+    get:
+      tags: [Members]
+      summary: Get current user selected course category
+      operationId: getMyCategory
+      responses:
+        "200":
+          description: Member category
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CourseCategoryDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      tags: [Members]
+      summary: Set current user course category
+      operationId: setMyCategory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetMyCategoryRequest"
+      responses:
+        "200":
+          description: Category selected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CourseCategoryDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /courses/{courseId}/leave:
     parameters:
       - $ref: "#/components/parameters/CourseId"
@@ -1226,6 +1393,56 @@ components:
         studentCount:
           type: integer
           example: 30
+
+    CourseCategoryDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+        active:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateCourseCategoryRequest:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 2000
+        active:
+          type: boolean
+          default: true
+
+    UpdateCourseCategoryRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 2000
+        active:
+          type: boolean
+
+    SetMyCategoryRequest:
+      type: object
+      properties:
+        categoryId:
+          type: string
+          format: uuid
+          nullable: true
 
     PageCourseDto:
       type: object
