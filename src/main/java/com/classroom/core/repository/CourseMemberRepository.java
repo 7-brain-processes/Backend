@@ -6,6 +6,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -24,6 +26,10 @@ public interface CourseMemberRepository extends JpaRepository<CourseMember, UUID
     Page<CourseMember> findByUserIdAndRole(UUID userId, CourseRole role, Pageable pageable);
 
     int countByCourseIdAndRole(UUID courseId, CourseRole role);
+
+    List<CourseMember> findByCourseIdAndUserIdIn(UUID courseId, Collection<UUID> userIds);
+
+    List<CourseMember> findByCourseIdAndTeamIdOrderByJoinedAtAsc(UUID courseId, UUID teamId);
 
     void deleteByCourseIdAndUserId(UUID courseId, UUID userId);
 }

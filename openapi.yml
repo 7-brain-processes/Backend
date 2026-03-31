@@ -15,6 +15,8 @@ tags:
     description: Course CRUD and membership
   - name: Members
     description: Course member management
+  - name: Teams
+    description: Course team management
   - name: Invites
     description: Invite links for teachers and students
   - name: Posts
@@ -410,6 +412,62 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/teams:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+
+    get:
+      tags: [Teams]
+      summary: List teams in a course
+      operationId: listCourseTeams
+      responses:
+        "200":
+          description: List of course teams
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CourseTeamDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    post:
+      tags: [Teams]
+      summary: Create a course team (teacher only)
+      operationId: createCourseTeam
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCourseTeamRequest"
+      responses:
+        "201":
+          description: Team created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CourseTeamDto"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /courses/{courseId}/leave:
     parameters:
@@ -1443,6 +1501,46 @@ components:
           type: string
           format: uuid
           nullable: true
+
+    CreateCourseTeamRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        memberIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+
+    CourseTeamMemberDto:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/UserDto"
+        category:
+          $ref: "#/components/schemas/CourseCategoryDto"
+
+    CourseTeamDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        membersCount:
+          type: integer
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/CourseTeamMemberDto"
 
     PageCourseDto:
       type: object
