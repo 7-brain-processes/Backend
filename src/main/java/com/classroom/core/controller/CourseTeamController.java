@@ -1,8 +1,11 @@
 package com.classroom.core.controller;
 
 import com.classroom.core.dto.ErrorResponse;
+import com.classroom.core.dto.team.CourseTeamAvailabilityDto;
 import com.classroom.core.dto.team.CourseTeamDto;
 import com.classroom.core.dto.team.CreateCourseTeamRequest;
+import com.classroom.core.dto.team.EnrollmentResponseDto;
+import com.classroom.core.dto.team.StudentTeamDto;
 import com.classroom.core.security.UserPrincipal;
 import com.classroom.core.service.CourseTeamService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -76,5 +79,107 @@ public class CourseTeamController {
 
         CourseTeamDto result = courseTeamService.createTeam(courseId, request, principal.getId());
         return ResponseEntity.status(HttpStatus.CREATED).body(result);
+    }
+
+
+    @GetMapping("/posts/{postId}/teams")
+    @Operation(
+            summary = "List available teams for self-enrollment in an assignment",
+            operationId = "listTeamsForEnrollment",
+            security = @SecurityRequirement(name = "bearerAuth"),
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "List of available teams with availability status",
+                            content = @Content(schema = @Schema(implementation = CourseTeamAvailabilityDto.class))),
+                    @ApiResponse(responseCode = "403", description = "Insufficient permissions",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "404", description = "Resource not found",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            }
+    )
+    public ResponseEntity<List<CourseTeamAvailabilityDto>> listTeamsForEnrollment(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable UUID courseId,
+            @PathVariable UUID postId) {
+
+        List<CourseTeamAvailabilityDto> result = courseTeamService.listTeamsForEnrollment(
+                courseId, postId, principal.getId());
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/posts/{postId}/my-team")
+    @Operation(
+            summary = "Get student's current team in an assignment",
+            operationId = "getStudentTeamInPost",
+            security = @SecurityRequirement(name = "bearerAuth"),
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Student's team",
+                            content = @Content(schema = @Schema(implementation = StudentTeamDto.class))),
+                    @ApiResponse(responseCode = "403", description = "Insufficient permissions",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "404", description = "Student is not in any team",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            }
+    )
+    public ResponseEntity<StudentTeamDto> getStudentTeam(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable UUID courseId,
+            @PathVariable UUID postId) {
+
+        StudentTeamDto result = courseTeamService.getStudentTeamInPost(courseId, postId, principal.getId());
+        return ResponseEntity.ok(result);
+    }
+
+    @PostMapping("/posts/{postId}/teams/{teamId}/enroll")
+    @Operation(
+            summary = "Enroll student in a team",
+            operationId = "enrollStudentInTeam",
+            security = @SecurityRequirement(name = "bearerAuth"),
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Successfully enrolled",
+                            content = @Content(schema = @Schema(implementation = EnrollmentResponseDto.class))),
+                    @ApiResponse(responseCode = "400", description = "Invalid enrollment request",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "403", description = "Insufficient permissions",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "404", description = "Resource not found",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "409", description = "Conflict (team full, already enrolled, etc)",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            }
+    )
+    public ResponseEntity<EnrollmentResponseDto> enrollInTeam(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable UUID courseId,
+            @PathVariable UUID postId,
+            @PathVariable UUID teamId) {
+
+        EnrollmentResponseDto result = courseTeamService.enrollStudentInTeam(courseId, postId, teamId, principal.getId());
+        return ResponseEntity.ok(result);
+    }
+
+    @DeleteMapping("/posts/{postId}/teams/{teamId}/leave")
+    @Operation(
+            summary = "Remove student from a team",
+            operationId = "removeStudentFromTeam",
+            security = @SecurityRequirement(name = "bearerAuth"),
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Successfully left team",
+                            content = @Content(schema = @Schema(implementation = EnrollmentResponseDto.class))),
+                    @ApiResponse(responseCode = "400", description = "Invalid request",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "403", description = "Insufficient permissions",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "404", description = "Resource not found",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            }
+    )
+    public ResponseEntity<EnrollmentResponseDto> leaveTeam(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable UUID courseId,
+            @PathVariable UUID postId,
+            @PathVariable UUID teamId) {
+
+        EnrollmentResponseDto result = courseTeamService.removeStudentFromTeam(courseId, postId, teamId, principal.getId());
+        return ResponseEntity.ok(result);
     }
 }

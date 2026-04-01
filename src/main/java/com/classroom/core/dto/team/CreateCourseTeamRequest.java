@@ -16,4 +16,6 @@ public class CreateCourseTeamRequest {
     private String name;
 
     private List<UUID> memberIds = new ArrayList<>();
+
+    private List<UUID> categoryIds = new ArrayList<>();
 }

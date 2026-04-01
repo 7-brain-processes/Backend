@@ -475,6 +475,112 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /courses/{courseId}/posts/{postId}/teams:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    get:
+      tags: [Teams]
+      summary: List available teams for self-enrollment in an assignment
+      operationId: listTeamsForEnrollment
+      responses:
+        "200":
+          description: List of available teams with availability status
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CourseTeamAvailabilityDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/my-team:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    get:
+      tags: [Teams]
+      summary: Get student's current team in an assignment
+      operationId: getStudentTeamInPost
+      responses:
+        "200":
+          description: Student's team
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentTeamDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/teams/{teamId}/enroll:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+      - $ref: "#/components/parameters/TeamId"
+
+    post:
+      tags: [Teams]
+      summary: Enroll student in a team
+      operationId: enrollStudentInTeam
+      responses:
+        "200":
+          description: Successfully enrolled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnrollmentResponseDto"
+        "400":
+          description: Invalid enrollment request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Conflict (team full, already enrolled, etc)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /courses/{courseId}/posts/{postId}/teams/{teamId}/leave:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+      - $ref: "#/components/parameters/TeamId"
+
+    delete:
+      tags: [Teams]
+      summary: Remove student from a team
+      operationId: removeStudentFromTeam
+      responses:
+        "200":
+          description: Successfully left team
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnrollmentResponseDto"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /courses/{courseId}/posts/{postId}/team-formation/mode:
     parameters:
       - $ref: "#/components/parameters/CourseId"
@@ -1495,6 +1601,22 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+    delete:
+      tags: [Grading]
+      summary: Remove a grade from a solution (teacher only)
+      operationId: removeGrade
+      responses:
+        "200":
+          description: Grade removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SolutionDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /courses/{courseId}/posts/{postId}/solutions/{solutionId}/comments:
     parameters:
       - $ref: "#/components/parameters/CourseId"
@@ -1912,6 +2034,94 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/CourseTeamMemberDto"
+        maxSize:
+          type: integer
+          nullable: true
+        selfEnrollmentEnabled:
+          type: boolean
+        isFull:
+          type: boolean
+        categories:
+          type: array
+          items:
+            $ref: "#/components/schemas/CourseCategoryDto"
+        categoryId:
+          type: string
+          format: uuid
+          nullable: true
+        categoryTitle:
+          type: string
+          nullable: true
+
+    CourseTeamAvailabilityDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        currentMembers:
+          type: integer
+        maxSize:
+          type: integer
+          nullable: true
+        isFull:
+          type: boolean
+        isStudentMember:
+          type: boolean
+        categories:
+          type: array
+          items:
+            $ref: "#/components/schemas/CourseCategoryDto"
+        createdAt:
+          type: string
+          format: date-time
+
+    StudentTeamDto:
+      type: object
+      properties:
+        teamId:
+          type: string
+          format: uuid
+        teamName:
+          type: string
+        membersCount:
+          type: integer
+        maxSize:
+          type: integer
+          nullable: true
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/CourseTeamMemberDto"
+        joinedAt:
+          type: string
+          format: date-time
+
+    EnrollmentResponseDto:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        team:
+          $ref: "#/components/schemas/TeamEnrollmentStatusDto"
+
+    TeamEnrollmentStatusDto:
+      type: object
+      properties:
+        teamId:
+          type: string
+          format: uuid
+        teamName:
+          type: string
+        currentMembers:
+          type: integer
+        maxSize:
+          type: integer
+          nullable: true
 
     TeamFormationModeDto:
       type: object

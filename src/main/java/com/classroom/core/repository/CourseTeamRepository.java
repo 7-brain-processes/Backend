@@ -14,4 +14,10 @@ public interface CourseTeamRepository extends JpaRepository<CourseTeam, UUID> {
     Optional<CourseTeam> findByIdAndCourseId(UUID teamId, UUID courseId);
 
     boolean existsByCourseIdAndNameIgnoreCase(UUID courseId, String name);
+
+    List<CourseTeam> findByPostIdAndSelfEnrollmentEnabledOrderByCreatedAtAsc(UUID postId, boolean enabled);
+
+    Optional<CourseTeam> findByPostIdAndId(UUID postId, UUID teamId);
+
+    List<CourseTeam> findByPostId(UUID postId);
 }
