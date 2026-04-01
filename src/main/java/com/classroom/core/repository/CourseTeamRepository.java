@@ -4,6 +4,7 @@ import com.classroom.core.model.CourseTeam;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface CourseTeamRepository extends JpaRepository<CourseTeam, UUID> {
@@ -11,4 +12,10 @@ public interface CourseTeamRepository extends JpaRepository<CourseTeam, UUID> {
     List<CourseTeam> findByCourseIdOrderByCreatedAtAsc(UUID courseId);
 
     boolean existsByCourseIdAndNameIgnoreCase(UUID courseId, String name);
+
+    List<CourseTeam> findByPostIdAndSelfEnrollmentEnabledOrderByCreatedAtAsc(UUID postId, boolean enabled);
+
+    Optional<CourseTeam> findByPostIdAndId(UUID postId, UUID teamId);
+
+    List<CourseTeam> findByPostId(UUID postId);
 }

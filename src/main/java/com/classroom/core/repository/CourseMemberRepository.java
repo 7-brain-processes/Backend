@@ -5,6 +5,8 @@ import com.classroom.core.model.CourseRole;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.util.List;
@@ -32,4 +34,22 @@ public interface CourseMemberRepository extends JpaRepository<CourseMember, UUID
     List<CourseMember> findByCourseIdAndTeamIdOrderByJoinedAtAsc(UUID courseId, UUID teamId);
 
     void deleteByCourseIdAndUserId(UUID courseId, UUID userId);
+
+    int countByTeamId(UUID teamId);
+
+    Optional<CourseMember> findByCourseIdAndUserIdAndTeamId(UUID courseId, UUID userId, UUID teamId);
+
+    @Query("SELECT cm FROM CourseMember cm " +
+           "JOIN cm.team t " +
+           "WHERE cm.course.id = :courseId AND cm.user.id = :userId AND t.post.id = :postId")
+    Optional<CourseMember> findStudentTeamInPost(@Param("courseId") UUID courseId, 
+                                                   @Param("userId") UUID userId,
+                                                   @Param("postId") UUID postId);
+
+    @Query("SELECT COUNT(cm) FROM CourseMember cm " +
+           "JOIN cm.team t " +
+           "WHERE cm.course.id = :courseId AND cm.user.id = :userId AND t.post.id = :postId")
+    int countStudentTeamsInPost(@Param("courseId") UUID courseId, 
+                                 @Param("userId") UUID userId,
+                                 @Param("postId") UUID postId);
 }

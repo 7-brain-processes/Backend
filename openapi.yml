@@ -469,6 +469,112 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /courses/{courseId}/posts/{postId}/teams:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    get:
+      tags: [Teams]
+      summary: List available teams for self-enrollment in an assignment
+      operationId: listTeamsForEnrollment
+      responses:
+        "200":
+          description: List of available team slots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CourseTeamAvailabilityDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/my-team:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    get:
+      tags: [Teams]
+      summary: Get the current student team for assignment
+      operationId: getStudentTeamInPost
+      responses:
+        "200":
+          description: Current student's team within the post
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentTeamDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/teams/{teamId}/enroll:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+      - $ref: "#/components/parameters/TeamId"
+
+    post:
+      tags: [Teams]
+      summary: Enroll student in a team
+      operationId: enrollStudentInTeam
+      responses:
+        "200":
+          description: Enrolled successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnrollmentResponseDto"
+        "400":
+          description: Invalid request (max size exceeded, category mismatch, etc.)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Conflict (already enrolled in post or team full)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /courses/{courseId}/posts/{postId}/teams/{teamId}/leave:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+      - $ref: "#/components/parameters/TeamId"
+
+    delete:
+      tags: [Teams]
+      summary: Leave the current team
+      operationId: removeStudentFromTeam
+      responses:
+        "200":
+          description: Left team successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnrollmentResponseDto"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /courses/{courseId}/leave:
     parameters:
       - $ref: "#/components/parameters/CourseId"
@@ -1289,6 +1395,14 @@ components:
         type: string
         format: uuid
 
+    TeamId:
+      name: teamId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
     PageParam:
       name: page
       in: query
@@ -1515,6 +1629,11 @@ components:
           items:
             type: string
             format: uuid
+        categoryIds:
+          type: array
+          items:
+            type: string
+            format: uuid
 
     CourseTeamMemberDto:
       type: object
@@ -1541,6 +1660,45 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/CourseTeamMemberDto"
+
+    CourseTeamAvailabilityDto:
+      type: object
+      properties:
+        team:
+          $ref: "#/components/schemas/CourseTeamDto"
+        maxSize:
+          type: integer
+          nullable: true
+          description: Maximum allowed team size (null = unlimited)
+        isFull:
+          type: boolean
+          description: True if the team is at max size
+        isStudentMember:
+          type: boolean
+          description: True if the requesting student is already in the team
+        category:
+          $ref: "#/components/schemas/CourseCategoryDto"
+
+    StudentTeamDto:
+      type: object
+      properties:
+        team:
+          $ref: "#/components/schemas/CourseTeamDto"
+        memberIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+
+    EnrollmentResponseDto:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        team:
+          $ref: "#/components/schemas/CourseTeamDto"
 
     PageCourseDto:
       type: object
