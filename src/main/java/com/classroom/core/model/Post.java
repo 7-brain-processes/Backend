@@ -42,6 +42,10 @@ public class Post {
     @Column(nullable = false, length = 10)
     private PostType type;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "team_formation_mode", length = 20)
+    private TeamFormationMode teamFormationMode;
+
     private Instant deadline;
 
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)

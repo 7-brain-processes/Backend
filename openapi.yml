@@ -17,6 +17,12 @@ tags:
     description: Course member management
   - name: Teams
     description: Course team management
+  - name: Team Formation
+    description: Team formation settings and auto generation for task posts
+  - name: Team Grading
+    description: Team-level grades and distribution settings
+  - name: Team Requirement Templates
+    description: Reusable team requirement templates
   - name: Invites
     description: Invite links for teachers and students
   - name: Posts
@@ -468,6 +474,347 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+
+  /courses/{courseId}/posts/{postId}/team-formation/mode:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    get:
+      tags: [Team Formation]
+      summary: Get team formation mode for a task post
+      operationId: getTeamFormationMode
+      responses:
+        "200":
+          description: Current team formation mode
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamFormationModeDto"
+        "400":
+          description: Post is not a task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      tags: [Team Formation]
+      summary: Set team formation mode for a task post (teacher only)
+      operationId: setTeamFormationMode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetTeamFormationModeRequest"
+      responses:
+        "200":
+          description: Team formation mode saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamFormationModeDto"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/team-formation/auto:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    post:
+      tags: [Team Formation]
+      summary: Run automatic team formation for a task post (teacher only)
+      operationId: runAutomaticTeamFormation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AutoTeamFormationRequest"
+      responses:
+        "202":
+          description: Auto formation started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutoTeamFormationResultDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/team-formation/auto/result:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    get:
+      tags: [Team Formation]
+      summary: Get last automatic team formation result
+      operationId: getAutomaticTeamFormationResult
+      responses:
+        "200":
+          description: Last formation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutoTeamFormationResultDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/teams/{teamId}/grade:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+      - $ref: "#/components/parameters/TeamId"
+
+    get:
+      tags: [Team Grading]
+      summary: Get team grade for a task post
+      operationId: getTeamGrade
+      responses:
+        "200":
+          description: Team grade data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamGradeDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      tags: [Team Grading]
+      summary: Set or update team grade (teacher only)
+      operationId: upsertTeamGrade
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertTeamGradeRequest"
+      responses:
+        "200":
+          description: Team grade saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamGradeDto"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/teams/{teamId}/grade/distribution:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+      - $ref: "#/components/parameters/TeamId"
+
+    get:
+      tags: [Team Grading]
+      summary: Get team grade distribution details
+      operationId: getTeamGradeDistribution
+      responses:
+        "200":
+          description: Distribution details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamGradeDistributionDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      tags: [Team Grading]
+      summary: Set team grade distribution mode (teacher only)
+      operationId: setTeamGradeDistributionMode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetTeamGradeDistributionModeRequest"
+      responses:
+        "200":
+          description: Distribution mode saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamGradeDistributionDto"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/team-requirement-templates:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+
+    get:
+      tags: [Team Requirement Templates]
+      summary: List team requirement templates
+      operationId: listTeamRequirementTemplates
+      responses:
+        "200":
+          description: Template list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TeamRequirementTemplateDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    post:
+      tags: [Team Requirement Templates]
+      summary: Create team requirement template (teacher only)
+      operationId: createTeamRequirementTemplate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTeamRequirementTemplateRequest"
+      responses:
+        "201":
+          description: Template created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamRequirementTemplateDto"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/team-requirement-templates/{templateId}:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/TemplateId"
+
+    get:
+      tags: [Team Requirement Templates]
+      summary: Get team requirement template details
+      operationId: getTeamRequirementTemplate
+      responses:
+        "200":
+          description: Template details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamRequirementTemplateDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      tags: [Team Requirement Templates]
+      summary: Update team requirement template (teacher only)
+      operationId: updateTeamRequirementTemplate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTeamRequirementTemplateRequest"
+      responses:
+        "200":
+          description: Template updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamRequirementTemplateDto"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      tags: [Team Requirement Templates]
+      summary: Archive team requirement template (teacher only)
+      operationId: archiveTeamRequirementTemplate
+      responses:
+        "204":
+          description: Template archived
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/team-requirement-templates/{templateId}/apply:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/TemplateId"
+
+    post:
+      tags: [Team Requirement Templates]
+      summary: Apply template to a task post (teacher only)
+      operationId: applyTeamRequirementTemplate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApplyTeamRequirementTemplateRequest"
+      responses:
+        "200":
+          description: Template applied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TemplateApplyResultDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /courses/{courseId}/leave:
     parameters:
@@ -1289,6 +1636,22 @@ components:
         type: string
         format: uuid
 
+    TeamId:
+      name: teamId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+    TemplateId:
+      name: templateId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
     PageParam:
       name: page
       in: query
@@ -1338,6 +1701,14 @@ components:
     PostType:
       type: string
       enum: [MATERIAL, TASK]
+
+    TeamFormationMode:
+      type: string
+      enum: [FREE, DRAFT, RANDOM_SHUFFLE]
+
+    TeamGradeDistributionMode:
+      type: string
+      enum: [MANUAL, AUTO_EQUAL]
 
     SolutionStatus:
       type: string
@@ -1542,6 +1913,242 @@ components:
           items:
             $ref: "#/components/schemas/CourseTeamMemberDto"
 
+    TeamFormationModeDto:
+      type: object
+      properties:
+        mode:
+          $ref: "#/components/schemas/TeamFormationMode"
+
+    SetTeamFormationModeRequest:
+      type: object
+      required: [mode]
+      properties:
+        mode:
+          $ref: "#/components/schemas/TeamFormationMode"
+
+    AutoTeamFormationRequest:
+      type: object
+      properties:
+        minTeamSize:
+          type: integer
+          minimum: 1
+        maxTeamSize:
+          type: integer
+          minimum: 1
+        balanceByCategory:
+          type: boolean
+          default: false
+        balanceByRole:
+          type: boolean
+          default: false
+        reshuffle:
+          type: boolean
+          default: false
+
+    AutoTeamFormationResultDto:
+      type: object
+      properties:
+        formedTeams:
+          type: integer
+        assignedStudents:
+          type: integer
+        unassignedStudents:
+          type: integer
+        generatedAt:
+          type: string
+          format: date-time
+
+    UpsertTeamGradeRequest:
+      type: object
+      required: [grade]
+      properties:
+        grade:
+          type: integer
+          minimum: 0
+          maximum: 100
+        comment:
+          type: string
+          maxLength: 5000
+
+    TeamGradeDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          nullable: true
+        postId:
+          type: string
+          format: uuid
+        teamId:
+          type: string
+          format: uuid
+        grade:
+          type: integer
+          minimum: 0
+          maximum: 100
+          nullable: true
+        comment:
+          type: string
+          nullable: true
+        distributionMode:
+          $ref: "#/components/schemas/TeamGradeDistributionMode"
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    SetTeamGradeDistributionModeRequest:
+      type: object
+      required: [distributionMode]
+      properties:
+        distributionMode:
+          $ref: "#/components/schemas/TeamGradeDistributionMode"
+
+    StudentDistributedGradeDto:
+      type: object
+      properties:
+        student:
+          $ref: "#/components/schemas/UserDto"
+        grade:
+          type: integer
+          minimum: 0
+          maximum: 100
+          nullable: true
+
+    TeamGradeDistributionDto:
+      type: object
+      properties:
+        teamId:
+          type: string
+          format: uuid
+        teamGrade:
+          type: integer
+          minimum: 0
+          maximum: 100
+          nullable: true
+        distributionMode:
+          $ref: "#/components/schemas/TeamGradeDistributionMode"
+        students:
+          type: array
+          items:
+            $ref: "#/components/schemas/StudentDistributedGradeDto"
+
+    CreateTeamRequirementTemplateRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 2000
+        minTeamSize:
+          type: integer
+          minimum: 1
+          nullable: true
+        maxTeamSize:
+          type: integer
+          minimum: 1
+          nullable: true
+        requiredCategoryId:
+          type: string
+          format: uuid
+          nullable: true
+        requireAudio:
+          type: boolean
+          default: false
+        requireVideo:
+          type: boolean
+          default: false
+
+    UpdateTeamRequirementTemplateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 2000
+        minTeamSize:
+          type: integer
+          minimum: 1
+          nullable: true
+        maxTeamSize:
+          type: integer
+          minimum: 1
+          nullable: true
+        requiredCategoryId:
+          type: string
+          format: uuid
+          nullable: true
+        requireAudio:
+          type: boolean
+          nullable: true
+        requireVideo:
+          type: boolean
+          nullable: true
+        active:
+          type: boolean
+          nullable: true
+
+    TeamRequirementTemplateDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        minTeamSize:
+          type: integer
+          nullable: true
+        maxTeamSize:
+          type: integer
+          nullable: true
+        requiredCategory:
+          $ref: "#/components/schemas/CourseCategoryDto"
+        requireAudio:
+          type: boolean
+        requireVideo:
+          type: boolean
+        active:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        archivedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    ApplyTeamRequirementTemplateRequest:
+      type: object
+      required: [postId]
+      properties:
+        postId:
+          type: string
+          format: uuid
+
+    TemplateApplyResultDto:
+      type: object
+      properties:
+        postId:
+          type: string
+          format: uuid
+        templateId:
+          type: string
+          format: uuid
+        appliedMode:
+          $ref: "#/components/schemas/TeamFormationMode"
+
     PageCourseDto:
       type: object
       properties:
@@ -1642,6 +2249,8 @@ components:
           example: "Read chapter 4 and complete the exercises."
         type:
           $ref: "#/components/schemas/PostType"
+        teamFormationMode:
+          $ref: "#/components/schemas/TeamFormationMode"
         deadline:
           type: string
           format: date-time
@@ -1658,6 +2267,8 @@ components:
         content:
           type: string
           maxLength: 10000
+        teamFormationMode:
+          $ref: "#/components/schemas/TeamFormationMode"
         deadline:
           type: string
           format: date-time
@@ -1676,6 +2287,8 @@ components:
           type: string
         type:
           $ref: "#/components/schemas/PostType"
+        teamFormationMode:
+          $ref: "#/components/schemas/TeamFormationMode"
         deadline:
           type: string
           format: date-time
