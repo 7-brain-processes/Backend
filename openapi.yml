@@ -684,6 +684,53 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /courses/{courseId}/posts/{postId}/team-formation/captains:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    get:
+      tags: [Team Formation]
+      summary: Get list of selected captains for a task post
+      operationId: getCaptains
+      responses:
+        "200":
+          description: List of captains
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PostCaptainDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    post:
+      tags: [Team Formation]
+      summary: Select random captains for a task post (teacher only)
+      operationId: selectCaptains
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SelectCaptainsRequest"
+      responses:
+        "200":
+          description: Captains selected successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SelectCaptainsResultDto"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /courses/{courseId}/posts/{postId}/teams/{teamId}/grade:
     parameters:
       - $ref: "#/components/parameters/CourseId"
@@ -1826,7 +1873,7 @@ components:
 
     TeamFormationMode:
       type: string
-      enum: [FREE, DRAFT, RANDOM_SHUFFLE]
+      enum: [FREE, DRAFT, RANDOM_SHUFFLE, RANDOM_CAPTAIN_SELECTION]
 
     TeamGradeDistributionMode:
       type: string
@@ -2677,6 +2724,51 @@ components:
           maxLength: 5000
           description: Optional comment along with the grade
           example: "Good work, but improve error handling."
+
+    PostCaptainDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Captain assignment ID
+        postId:
+          type: string
+          format: uuid
+          description: Task post ID
+        captainId:
+          type: string
+          format: uuid
+          description: User ID of the captain
+        captain:
+          $ref: "#/components/schemas/UserDto"
+          description: Captain user details
+        assignedAt:
+          type: string
+          format: date-time
+          description: When the captain was assigned
+
+    SelectCaptainsRequest:
+      type: object
+      properties:
+        reshuffle:
+          type: boolean
+          description: Whether to delete existing captains and select new ones
+          default: false
+          example: false
+
+    SelectCaptainsResultDto:
+      type: object
+      properties:
+        captains:
+          type: array
+          items:
+            $ref: "#/components/schemas/PostCaptainDto"
+          description: List of selected captains
+        captainCount:
+          type: integer
+          description: Number of captains selected
+          example: 3
 
     ErrorResponse:
       type: object

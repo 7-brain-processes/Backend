@@ -19,6 +19,8 @@ public interface CourseMemberRepository extends JpaRepository<CourseMember, UUID
 
     boolean existsByCourseIdAndUserId(UUID courseId, UUID userId);
 
+    List<CourseMember> findByCourseIdAndRole(UUID courseId, CourseRole role);
+
     Page<CourseMember> findByCourseId(UUID courseId, Pageable pageable);
 
     Page<CourseMember> findByCourseIdAndRole(UUID courseId, CourseRole role, Pageable pageable);
