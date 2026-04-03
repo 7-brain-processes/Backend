@@ -663,6 +663,29 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /courses/{courseId}/posts/{postId}/team-formation/auto/students:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    get:
+      tags: [Team Formation]
+      summary: List students available for automatic team formation
+      operationId: listStudentsForAutomaticTeamFormation
+      responses:
+        "200":
+          description: Students available for team formation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AutoFormationStudentDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /courses/{courseId}/posts/{postId}/team-formation/auto/result:
     parameters:
       - $ref: "#/components/parameters/CourseId"
@@ -2167,6 +2190,20 @@ components:
         generatedAt:
           type: string
           format: date-time
+
+    AutoFormationStudentDto:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+        username:
+          type: string
+        displayName:
+          type: string
+          nullable: true
+        category:
+          $ref: "#/components/schemas/CourseCategoryDto"
 
     UpsertTeamGradeRequest:
       type: object

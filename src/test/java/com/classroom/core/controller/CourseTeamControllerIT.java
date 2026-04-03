@@ -19,6 +19,8 @@ import com.classroom.core.repository.CourseMemberRepository;
 import com.classroom.core.repository.CourseRepository;
 import com.classroom.core.repository.CourseTeamRepository;
 import com.classroom.core.repository.PostRepository;
+import com.classroom.core.repository.TeamGradeRepository;
+import com.classroom.core.repository.TeamStudentGradeRepository;
 import com.classroom.core.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -65,8 +67,16 @@ class CourseTeamControllerIT {
     @Autowired
     private CourseCategoryRepository courseCategoryRepository;
 
+        @Autowired
+        private TeamGradeRepository teamGradeRepository;
+
+        @Autowired
+        private TeamStudentGradeRepository teamStudentGradeRepository;
+
     @BeforeEach
     void setUp() {
+        teamStudentGradeRepository.deleteAll();
+        teamGradeRepository.deleteAll();
         courseMemberRepository.deleteAll();
         courseTeamRepository.deleteAll();
         postRepository.deleteAll();

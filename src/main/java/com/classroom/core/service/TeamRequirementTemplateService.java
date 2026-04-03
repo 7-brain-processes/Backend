@@ -12,12 +12,15 @@ import com.classroom.core.exception.ResourceNotFoundException;
 import com.classroom.core.model.CourseCategory;
 import com.classroom.core.model.CourseMember;
 import com.classroom.core.model.CourseRole;
+import com.classroom.core.model.CourseTeam;
 import com.classroom.core.model.Post;
+import com.classroom.core.model.PostType;
 import com.classroom.core.model.TeamFormationMode;
 import com.classroom.core.model.TeamRequirementTemplate;
 import com.classroom.core.repository.CourseCategoryRepository;
 import com.classroom.core.repository.CourseMemberRepository;
 import com.classroom.core.repository.CourseRepository;
+import com.classroom.core.repository.CourseTeamRepository;
 import com.classroom.core.repository.PostRepository;
 import com.classroom.core.repository.TeamRequirementTemplateRepository;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +28,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.UUID;
 
@@ -38,6 +42,7 @@ public class TeamRequirementTemplateService {
     private final CourseMemberRepository courseMemberRepository;
     private final CourseCategoryRepository courseCategoryRepository;
     private final PostRepository postRepository;
+    private final CourseTeamRepository courseTeamRepository;
 
     public List<TeamRequirementTemplateDto> listTemplates(UUID courseId, UUID currentUserId) {
         ensureTeacher(courseId, currentUserId);
@@ -136,6 +141,7 @@ public class TeamRequirementTemplateService {
         templateRepository.save(template);
     }
 
+    @Transactional
     public TemplateApplyResultDto applyTemplate(UUID courseId,
                                                 UUID templateId,
                                                 ApplyTeamRequirementTemplateRequest request,
@@ -152,15 +158,101 @@ public class TeamRequirementTemplateService {
             throw new ResourceNotFoundException("Post not found");
         }
 
-        TeamFormationMode mode = post.getTeamFormationMode() == null
-                ? TeamFormationMode.FREE
-                : post.getTeamFormationMode();
+        if (post.getType() != PostType.TASK) {
+            throw new BadRequestException("Template can be applied only to task posts");
+        }
+
+        if (!template.isActive()) {
+            throw new BadRequestException("Template is archived");
+        }
+
+        validateCompatibility(courseId, post, template);
+        TeamFormationMode appliedMode = applyTemplateToPost(post, template);
 
         return TemplateApplyResultDto.builder()
                 .postId(post.getId())
                 .templateId(template.getId())
-                .appliedMode(mode)
+                .appliedMode(appliedMode)
                 .build();
+    }
+
+    private void validateCompatibility(UUID courseId, Post post, TeamRequirementTemplate template) {
+        List<CourseMember> students = courseMemberRepository
+                .findByCourseIdAndRoleOrderByJoinedAtAsc(courseId, CourseRole.STUDENT);
+
+        if (students.isEmpty()) {
+            throw new BadRequestException("No students in course to apply template");
+        }
+
+        Integer minTeamSize = template.getMinTeamSize();
+        Integer maxTeamSize = template.getMaxTeamSize();
+        if (minTeamSize != null && minTeamSize > students.size()) {
+            throw new BadRequestException("Template minTeamSize is incompatible with current student count");
+        }
+        if (maxTeamSize != null && maxTeamSize < 1) {
+            throw new BadRequestException("Template maxTeamSize must be greater than 0");
+        }
+
+        CourseCategory requiredCategory = template.getRequiredCategory();
+        if (requiredCategory != null) {
+            boolean categoryExistsAmongStudents = students.stream()
+                    .anyMatch(member -> member.getCategory() != null
+                            && requiredCategory.getId().equals(member.getCategory().getId()));
+
+            if (!categoryExistsAmongStudents) {
+                throw new BadRequestException("Template required category has no students in this course");
+            }
+        }
+
+        List<CourseTeam> existingPostTeams = courseTeamRepository.findByPostId(post.getId());
+        for (CourseTeam team : existingPostTeams) {
+            int membersCount = courseMemberRepository.countByTeamId(team.getId());
+
+            if (maxTeamSize != null && membersCount > maxTeamSize) {
+                throw new BadRequestException("Existing team size is incompatible with template maxTeamSize");
+            }
+
+            if (requiredCategory != null) {
+                List<CourseMember> teamMembers = courseMemberRepository
+                        .findByCourseIdAndTeamIdOrderByJoinedAtAsc(courseId, team.getId());
+
+                boolean hasIncompatibleMember = teamMembers.stream()
+                        .anyMatch(member -> member.getCategory() == null
+                                || !requiredCategory.getId().equals(member.getCategory().getId()));
+                if (hasIncompatibleMember) {
+                    throw new BadRequestException("Existing teams are incompatible with template required category");
+                }
+            }
+        }
+    }
+
+    private TeamFormationMode applyTemplateToPost(Post post, TeamRequirementTemplate template) {
+        TeamFormationMode resultingMode = post.getTeamFormationMode() == null
+                ? TeamFormationMode.DRAFT
+                : post.getTeamFormationMode();
+
+        if (resultingMode == TeamFormationMode.FREE) {
+            resultingMode = TeamFormationMode.DRAFT;
+        }
+
+        post.setTeamFormationMode(resultingMode);
+        postRepository.save(post);
+
+        List<CourseTeam> existingPostTeams = courseTeamRepository.findByPostId(post.getId());
+        for (CourseTeam team : existingPostTeams) {
+            team.setMaxSize(template.getMaxTeamSize());
+            if (template.getRequiredCategory() == null) {
+                team.setCategories(new LinkedHashSet<>());
+            } else {
+                team.setCategories(new LinkedHashSet<>(List.of(template.getRequiredCategory())));
+            }
+        }
+
+        if (!existingPostTeams.isEmpty()) {
+            courseTeamRepository.saveAll(existingPostTeams);
+        }
+
+        return resultingMode;
     }
 
     private void ensureTeacher(UUID courseId, UUID userId) {

@@ -1,12 +1,14 @@
 package com.classroom.core.controller;
 
 import com.classroom.core.dto.ErrorResponse;
+import com.classroom.core.dto.team.AutoFormationStudentDto;
 import com.classroom.core.dto.team.AutoTeamFormationRequest;
 import com.classroom.core.dto.team.AutoTeamFormationResultDto;
 import com.classroom.core.dto.team.SetTeamFormationModeRequest;
 import com.classroom.core.dto.team.TeamFormationModeDto;
 import com.classroom.core.security.UserPrincipal;
 import com.classroom.core.service.PostService;
+import com.classroom.core.service.TeamFormationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -25,8 +27,8 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -36,6 +38,7 @@ import java.util.UUID;
 public class TeamFormationController {
 
     private final PostService postService;
+        private final TeamFormationService teamFormationService;
 
     @GetMapping("/mode")
     @Operation(
@@ -111,9 +114,9 @@ public class TeamFormationController {
             @PathVariable UUID courseId,
             @PathVariable UUID postId,
             @Valid @RequestBody AutoTeamFormationRequest request) {
-
-        throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED,
-                "Automatic team formation algorithm is not implemented yet");
+        AutoTeamFormationResultDto result = teamFormationService
+                .runAutomaticFormation(courseId, postId, request, principal.getId());
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(result);
     }
 
     @GetMapping("/auto/result")
@@ -134,8 +137,32 @@ public class TeamFormationController {
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable UUID courseId,
             @PathVariable UUID postId) {
+        AutoTeamFormationResultDto result = teamFormationService
+                .getLastAutomaticFormationResult(courseId, postId, principal.getId());
+        return ResponseEntity.ok(result);
+    }
 
-        throw new ResponseStatusException(HttpStatus.NOT_IMPLEMENTED,
-                "Automatic team formation algorithm is not implemented yet");
+    @GetMapping("/auto/students")
+    @Operation(
+            summary = "List students available for automatic team formation",
+            operationId = "listStudentsForAutomaticTeamFormation",
+            security = @SecurityRequirement(name = "bearerAuth"),
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Students available for team formation",
+                            content = @Content(schema = @Schema(implementation = AutoFormationStudentDto.class))),
+                    @ApiResponse(responseCode = "403", description = "Insufficient permissions",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "404", description = "Resource not found",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            }
+    )
+    public ResponseEntity<List<AutoFormationStudentDto>> listAvailableStudents(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable UUID courseId,
+            @PathVariable UUID postId) {
+
+        List<AutoFormationStudentDto> result = teamFormationService
+                .listAvailableStudents(courseId, postId, principal.getId());
+        return ResponseEntity.ok(result);
     }
 }

@@ -16,18 +16,22 @@ import com.classroom.core.model.Post;
 import com.classroom.core.model.PostType;
 import com.classroom.core.model.TeamGrade;
 import com.classroom.core.model.TeamGradeDistributionMode;
+import com.classroom.core.model.TeamStudentGrade;
 import com.classroom.core.repository.CourseMemberRepository;
 import com.classroom.core.repository.CourseRepository;
 import com.classroom.core.repository.CourseTeamRepository;
 import com.classroom.core.repository.PostRepository;
 import com.classroom.core.repository.TeamGradeRepository;
+import com.classroom.core.repository.TeamStudentGradeRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -39,6 +43,7 @@ public class TeamGradeService {
     private final PostRepository postRepository;
     private final CourseTeamRepository courseTeamRepository;
     private final TeamGradeRepository teamGradeRepository;
+    private final TeamStudentGradeRepository teamStudentGradeRepository;
 
     public TeamGradeDto getTeamGrade(UUID courseId, UUID postId, UUID teamId, UUID currentUserId) {
         ensureTeacher(courseId, currentUserId);
@@ -76,7 +81,12 @@ public class TeamGradeService {
         grade.setGrade(request.getGrade());
         grade.setComment(request.getComment());
 
-        return toDto(teamGradeRepository.save(grade));
+        TeamGrade saved = teamGradeRepository.save(grade);
+        if (saved.getDistributionMode() == TeamGradeDistributionMode.AUTO_EQUAL) {
+            ensurePersistedAutoDistribution(courseId, saved, true);
+        }
+
+        return toDto(saved);
     }
 
     public TeamGradeDistributionDto getDistribution(UUID courseId, UUID postId, UUID teamId, UUID currentUserId) {
@@ -94,7 +104,20 @@ public class TeamGradeService {
         Integer teamGrade = grade == null ? null : grade.getGrade();
 
         List<CourseMember> members = courseMemberRepository.findByCourseIdAndTeamIdOrderByJoinedAtAsc(courseId, teamId);
-        List<StudentDistributedGradeDto> students = distribute(members, teamGrade, mode);
+        List<StudentDistributedGradeDto> students;
+
+        if (mode == TeamGradeDistributionMode.AUTO_EQUAL && grade != null) {
+            ensurePersistedAutoDistribution(courseId, grade, false);
+            students = teamStudentGradeRepository.findByTeamGradeIdOrderByStudentIdAsc(grade.getId())
+                .stream()
+                .map(entry -> StudentDistributedGradeDto.builder()
+                    .student(UserDto.from(entry.getStudent()))
+                    .grade(entry.getGrade())
+                    .build())
+                .toList();
+        } else {
+            students = distribute(members, teamGrade, mode);
+        }
 
         return TeamGradeDistributionDto.builder()
                 .teamId(teamId)
@@ -120,9 +143,52 @@ public class TeamGradeService {
                         .build());
 
         grade.setDistributionMode(request.getDistributionMode());
-        teamGradeRepository.save(grade);
+        TeamGrade saved = teamGradeRepository.save(grade);
+
+        if (saved.getDistributionMode() == TeamGradeDistributionMode.AUTO_EQUAL) {
+            ensurePersistedAutoDistribution(courseId, saved, true);
+        } else {
+            teamStudentGradeRepository.deleteByTeamGradeId(saved.getId());
+            teamStudentGradeRepository.flush();
+        }
 
         return getDistribution(courseId, postId, teamId, currentUserId);
+    }
+
+    private void ensurePersistedAutoDistribution(UUID courseId, TeamGrade grade, boolean forceRecompute) {
+        List<CourseMember> members = courseMemberRepository
+                .findByCourseIdAndTeamIdOrderByJoinedAtAsc(courseId, grade.getTeam().getId());
+
+        Map<UUID, TeamStudentGrade> existingByStudent = teamStudentGradeRepository
+                .findByTeamGradeIdOrderByStudentIdAsc(grade.getId())
+                .stream()
+                .collect(Collectors.toMap(entry -> entry.getStudent().getId(), entry -> entry));
+
+        boolean needsRecompute = existingByStudent.size() != members.size()
+                || members.stream().anyMatch(member -> !existingByStudent.containsKey(member.getUser().getId()));
+
+        if (!needsRecompute && !forceRecompute) {
+            return;
+        }
+
+        List<StudentDistributedGradeDto> distributed = distribute(members, grade.getGrade(), TeamGradeDistributionMode.AUTO_EQUAL);
+
+        teamStudentGradeRepository.deleteByTeamGradeId(grade.getId());
+        teamStudentGradeRepository.flush();
+
+        List<TeamStudentGrade> persisted = new ArrayList<>();
+        for (int i = 0; i < members.size(); i++) {
+            CourseMember member = members.get(i);
+            Integer distributedGrade = distributed.get(i).getGrade();
+
+            persisted.add(TeamStudentGrade.builder()
+                    .teamGrade(grade)
+                    .student(member.getUser())
+                    .grade(distributedGrade)
+                    .build());
+        }
+
+        teamStudentGradeRepository.saveAll(persisted);
     }
 
     private List<StudentDistributedGradeDto> distribute(List<CourseMember> members,

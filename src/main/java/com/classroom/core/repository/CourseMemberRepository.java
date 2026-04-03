@@ -31,7 +31,11 @@ public interface CourseMemberRepository extends JpaRepository<CourseMember, UUID
 
     List<CourseMember> findByCourseIdAndUserIdIn(UUID courseId, Collection<UUID> userIds);
 
+       List<CourseMember> findByCourseIdAndRoleOrderByJoinedAtAsc(UUID courseId, CourseRole role);
+
     List<CourseMember> findByCourseIdAndTeamIdOrderByJoinedAtAsc(UUID courseId, UUID teamId);
+
+       void deleteByCourseId(UUID courseId);
 
     void deleteByCourseIdAndUserId(UUID courseId, UUID userId);
 
