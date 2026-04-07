@@ -25,4 +25,10 @@ public interface CourseTeamRepository extends JpaRepository<CourseTeam, UUID> {
 
     @Query("select t from CourseTeam t left join fetch t.categories where t.id = :teamId")
     Optional<CourseTeam> findByIdWithCategories(@Param("teamId") UUID teamId);
+
+    @Query("SELECT t FROM CourseTeam t WHERE t.post.id = :postId AND EXISTS (SELECT m FROM CourseMember m WHERE m.team = t AND m.user.id = :captainId)")
+    Optional<CourseTeam> findByPostIdAndCaptainId(@Param("postId") UUID postId, @Param("captainId") UUID captainId);
+
+    @Query("SELECT CASE WHEN COUNT(m) > 0 THEN true ELSE false END FROM CourseMember m WHERE m.team.post.id = :postId AND m.user.id = :userId")
+    boolean existsByPostIdAndMemberUserId(@Param("postId") UUID postId, @Param("userId") UUID userId);
 }

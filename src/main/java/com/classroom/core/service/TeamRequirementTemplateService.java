@@ -236,6 +236,7 @@ public class TeamRequirementTemplateService {
         }
 
         post.setTeamFormationMode(resultingMode);
+        post.setTeamRequirementTemplate(template);
         postRepository.save(post);
 
         List<CourseTeam> existingPostTeams = courseTeamRepository.findByPostId(post.getId());
@@ -253,6 +254,10 @@ public class TeamRequirementTemplateService {
         }
 
         return resultingMode;
+    }
+
+    public TeamRequirementTemplate getAppliedTemplate(Post post) {
+        return post.getTeamRequirementTemplate();
     }
 
     private void ensureTeacher(UUID courseId, UUID userId) {

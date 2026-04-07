@@ -23,6 +23,8 @@ tags:
     description: Team-level grades and distribution settings
   - name: Team Requirement Templates
     description: Reusable team requirement templates
+  - name: Team Invitations
+    description: Captain-based team formation invitations
   - name: Invites
     description: Invite links for teachers and students
   - name: Posts
@@ -702,6 +704,226 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AutoTeamFormationResultDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/team-formation/captains/select:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    post:
+      tags: [Team Formation]
+      summary: Select captains randomly for captain-based team formation (teacher only)
+      operationId: selectCaptains
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SelectCaptainsRequest"
+      responses:
+        "200":
+          description: Captains selected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SelectCaptainsResultDto"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/team-formation/captains:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    get:
+      tags: [Team Formation]
+      summary: Get selected captains for a task post (any course member)
+      operationId: getCaptains
+      responses:
+        "200":
+          description: Selected captains
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PostCaptainDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/invitations/captain/students:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    get:
+      tags: [Team Invitations]
+      summary: Get list of available students for captain to invite
+      operationId: getAvailableStudentsForCaptain
+      responses:
+        "200":
+          description: Available students
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AvailableStudentDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/invitations/captain/send:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    post:
+      tags: [Team Invitations]
+      summary: Send invitation to student (captain only)
+      operationId: sendInvitation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendInvitationRequest"
+      responses:
+        "200":
+          description: Invitation sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamInvitationDto"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/invitations/captain:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    get:
+      tags: [Team Invitations]
+      summary: Get captain's sent invitations
+      operationId: getCaptainInvitations
+      responses:
+        "200":
+          description: Captain's invitations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TeamInvitationDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/invitations/captain/team:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    get:
+      tags: [Team Invitations]
+      summary: Get current team composition for captain
+      operationId: getCaptainTeam
+      responses:
+        "200":
+          description: Captain's current team members
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AvailableStudentDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/invitations/student:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    get:
+      tags: [Team Invitations]
+      summary: Get student's received invitations
+      operationId: getStudentInvitations
+      responses:
+        "200":
+          description: Student's invitations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TeamInvitationDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/invitations/{invitationId}/respond:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+      - name: invitationId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      tags: [Team Invitations]
+      summary: Accept or decline invitation (student only)
+      operationId: respondToInvitation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RespondInvitationRequest"
+      responses:
+        "200":
+          description: Invitation responded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamInvitationDto"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
@@ -1849,11 +2071,107 @@ components:
 
     TeamFormationMode:
       type: string
-      enum: [FREE, DRAFT, RANDOM_SHUFFLE]
+      enum: [FREE, DRAFT, RANDOM_SHUFFLE, CAPTAIN_SELECTION]
 
     TeamGradeDistributionMode:
       type: string
       enum: [MANUAL, AUTO_EQUAL]
+
+    PostCaptainDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        username:
+          type: string
+        displayName:
+          type: string
+
+    SelectCaptainsRequest:
+      type: object
+      properties:
+        reshuffle:
+          type: boolean
+          default: false
+
+    SelectCaptainsResultDto:
+      type: object
+      properties:
+        selectedCaptains:
+          type: integer
+        captains:
+          type: array
+          items:
+            $ref: "#/components/schemas/PostCaptainDto"
+        selectedAt:
+          type: string
+          format: date-time
+
+    TeamInvitationDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        captainId:
+          type: string
+          format: uuid
+        captainUsername:
+          type: string
+        captainDisplayName:
+          type: string
+        studentId:
+          type: string
+          format: uuid
+        studentUsername:
+          type: string
+        studentDisplayName:
+          type: string
+        postId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [PENDING, ACCEPTED, DECLINED]
+        createdAt:
+          type: string
+          format: date-time
+        respondedAt:
+          type: string
+          format: date-time
+
+    SendInvitationRequest:
+      type: object
+      required: [studentId]
+      properties:
+        studentId:
+          type: string
+          format: uuid
+
+    RespondInvitationRequest:
+      type: object
+      required: [action]
+      properties:
+        action:
+          type: string
+          enum: [accept, decline]
+
+    AvailableStudentDto:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+        username:
+          type: string
+        displayName:
+          type: string
+        category:
+          $ref: "#/components/schemas/CourseCategoryDto"
 
     SolutionStatus:
       type: string

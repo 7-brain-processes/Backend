@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+
 @Entity
 @Table(name = "posts")
 @Getter
@@ -45,6 +46,10 @@ public class Post {
     @Enumerated(EnumType.STRING)
     @Column(name = "team_formation_mode", length = 20)
     private TeamFormationMode teamFormationMode;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "team_requirement_template_id")
+    private TeamRequirementTemplate teamRequirementTemplate;
 
     private Instant deadline;
 

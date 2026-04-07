@@ -4,9 +4,13 @@ import com.classroom.core.dto.ErrorResponse;
 import com.classroom.core.dto.team.AutoFormationStudentDto;
 import com.classroom.core.dto.team.AutoTeamFormationRequest;
 import com.classroom.core.dto.team.AutoTeamFormationResultDto;
+import com.classroom.core.dto.team.PostCaptainDto;
+import com.classroom.core.dto.team.SelectCaptainsRequest;
+import com.classroom.core.dto.team.SelectCaptainsResultDto;
 import com.classroom.core.dto.team.SetTeamFormationModeRequest;
 import com.classroom.core.dto.team.TeamFormationModeDto;
 import com.classroom.core.security.UserPrincipal;
+import com.classroom.core.service.PostCaptainService;
 import com.classroom.core.service.PostService;
 import com.classroom.core.service.TeamFormationService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -39,6 +43,7 @@ public class TeamFormationController {
 
     private final PostService postService;
         private final TeamFormationService teamFormationService;
+    private final PostCaptainService postCaptainService;
 
     @GetMapping("/mode")
     @Operation(
@@ -163,6 +168,57 @@ public class TeamFormationController {
 
         List<AutoFormationStudentDto> result = teamFormationService
                 .listAvailableStudents(courseId, postId, principal.getId());
+        return ResponseEntity.ok(result);
+    }
+
+    @PostMapping("/captains/select")
+    @Operation(
+            summary = "Select captains randomly for captain-based team formation (teacher only)",
+            operationId = "selectCaptains",
+            security = @SecurityRequirement(name = "bearerAuth"),
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Captains selected",
+                            content = @Content(schema = @Schema(implementation = SelectCaptainsResultDto.class))),
+                    @ApiResponse(responseCode = "400", description = "Invalid request",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "403", description = "Insufficient permissions",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "404", description = "Resource not found",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            }
+    )
+    public ResponseEntity<SelectCaptainsResultDto> selectCaptains(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable UUID courseId,
+            @PathVariable UUID postId,
+            @Valid @RequestBody SelectCaptainsRequest request) {
+
+        SelectCaptainsResultDto result = postCaptainService
+                .selectCaptains(courseId, postId, request, principal.getId());
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/captains")
+    @Operation(
+            summary = "Get selected captains for a task post",
+            operationId = "getCaptains",
+            security = @SecurityRequirement(name = "bearerAuth"),
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Selected captains",
+                            content = @Content(schema = @Schema(implementation = PostCaptainDto.class))),
+                    @ApiResponse(responseCode = "403", description = "Insufficient permissions",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "404", description = "Resource not found",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            }
+    )
+    public ResponseEntity<List<PostCaptainDto>> getCaptains(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable UUID courseId,
+            @PathVariable UUID postId) {
+
+        List<PostCaptainDto> result = postCaptainService
+                .getCaptains(courseId, postId, principal.getId());
         return ResponseEntity.ok(result);
     }
 }

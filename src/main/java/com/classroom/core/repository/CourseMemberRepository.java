@@ -56,4 +56,8 @@ public interface CourseMemberRepository extends JpaRepository<CourseMember, UUID
     int countStudentTeamsInPost(@Param("courseId") UUID courseId, 
                                  @Param("userId") UUID userId,
                                  @Param("postId") UUID postId);
+
+    boolean existsByTeamIdAndUserId(UUID teamId, UUID userId);
+
+    boolean existsByCourseIdAndUserIdAndRole(UUID courseId, UUID userId, CourseRole role);
 }
