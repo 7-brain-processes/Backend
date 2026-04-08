@@ -15,6 +15,20 @@ tags:
     description: Course CRUD and membership
   - name: Members
     description: Course member management
+  - name: Teams
+    description: Course team management
+  - name: Team Formation
+    description: Team formation settings and auto generation for task posts
+  - name: Team Grading
+    description: Team-level grades and distribution settings
+  - name: Team Requirement Templates
+    description: Reusable team requirement templates
+  - name: Captain Grade Distribution
+    description: Captain-driven grade distribution for team members
+  - name: Grade Voting
+    description: Team member voting for grade distribution
+  - name: Team Invitations
+    description: Captain-based team formation invitations
   - name: Invites
     description: Invite links for teachers and students
   - name: Posts
@@ -239,6 +253,1085 @@ paths:
       responses:
         "204":
           description: Member removed
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/categories:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+
+    get:
+      tags: [Courses]
+      summary: List categories for a course
+      operationId: listCourseCategories
+      responses:
+        "200":
+          description: List of course categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CourseCategoryDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    post:
+      tags: [Courses]
+      summary: Create course category (teacher only)
+      operationId: createCourseCategory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCourseCategoryRequest"
+      responses:
+        "201":
+          description: Category created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CourseCategoryDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/categories/{categoryId}:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - name: categoryId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      tags: [Courses]
+      summary: Get a course category
+      operationId: getCourseCategory
+      responses:
+        "200":
+          description: Course category details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CourseCategoryDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      tags: [Courses]
+      summary: Update course category (teacher only)
+      operationId: updateCourseCategory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCourseCategoryRequest"
+      responses:
+        "200":
+          description: Category updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CourseCategoryDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      tags: [Courses]
+      summary: Delete course category (teacher only)
+      operationId: deleteCourseCategory
+      responses:
+        "204":
+          description: Category deleted
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/members/{memberId}/category:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/UserId"
+
+    get:
+      tags: [Members]
+      summary: Get member selected course category
+      operationId: getMemberCategory
+      responses:
+        "200":
+          description: Member category
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CourseCategoryDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/members/me/category:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+
+    get:
+      tags: [Members]
+      summary: Get current user selected course category
+      operationId: getMyCategory
+      responses:
+        "200":
+          description: Member category
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CourseCategoryDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      tags: [Members]
+      summary: Set current user course category
+      operationId: setMyCategory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetMyCategoryRequest"
+      responses:
+        "200":
+          description: Category selected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CourseCategoryDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/teams:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+
+    get:
+      tags: [Teams]
+      summary: List teams in a course
+      operationId: listCourseTeams
+      responses:
+        "200":
+          description: List of course teams
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CourseTeamDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    post:
+      tags: [Teams]
+      summary: Create a course team (teacher only)
+      operationId: createCourseTeam
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCourseTeamRequest"
+      responses:
+        "201":
+          description: Team created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CourseTeamDto"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /courses/{courseId}/posts/{postId}/teams:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    get:
+      tags: [Teams]
+      summary: List available teams for self-enrollment in an assignment
+      operationId: listTeamsForEnrollment
+      responses:
+        "200":
+          description: List of available teams with availability status
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CourseTeamAvailabilityDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/my-team:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    get:
+      tags: [Teams]
+      summary: Get student's current team in an assignment
+      operationId: getStudentTeamInPost
+      responses:
+        "200":
+          description: Student's team
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StudentTeamDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/teams/{teamId}/enroll:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+      - $ref: "#/components/parameters/TeamId"
+
+    post:
+      tags: [Teams]
+      summary: Enroll student in a team
+      operationId: enrollStudentInTeam
+      responses:
+        "200":
+          description: Successfully enrolled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnrollmentResponseDto"
+        "400":
+          description: Invalid enrollment request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Conflict (team full, already enrolled, etc)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /courses/{courseId}/posts/{postId}/teams/{teamId}/leave:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+      - $ref: "#/components/parameters/TeamId"
+
+    delete:
+      tags: [Teams]
+      summary: Remove student from a team
+      operationId: removeStudentFromTeam
+      responses:
+        "200":
+          description: Successfully left team
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EnrollmentResponseDto"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/team-formation/mode:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    get:
+      tags: [Team Formation]
+      summary: Get team formation mode for a task post
+      operationId: getTeamFormationMode
+      responses:
+        "200":
+          description: Current team formation mode
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamFormationModeDto"
+        "400":
+          description: Post is not a task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      tags: [Team Formation]
+      summary: Set team formation mode for a task post (teacher only)
+      operationId: setTeamFormationMode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetTeamFormationModeRequest"
+      responses:
+        "200":
+          description: Team formation mode saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamFormationModeDto"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/team-formation/auto:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    post:
+      tags: [Team Formation]
+      summary: Run automatic team formation for a task post (teacher only)
+      operationId: runAutomaticTeamFormation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AutoTeamFormationRequest"
+      responses:
+        "202":
+          description: Auto formation started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutoTeamFormationResultDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/team-formation/auto/students:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    get:
+      tags: [Team Formation]
+      summary: List students available for automatic team formation
+      operationId: listStudentsForAutomaticTeamFormation
+      responses:
+        "200":
+          description: Students available for team formation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AutoFormationStudentDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/team-formation/auto/result:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    get:
+      tags: [Team Formation]
+      summary: Get last automatic team formation result
+      operationId: getAutomaticTeamFormationResult
+      responses:
+        "200":
+          description: Last formation result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutoTeamFormationResultDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/team-formation/captains/select:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    post:
+      tags: [Team Formation]
+      summary: Select captains randomly for captain-based team formation (teacher only)
+      operationId: selectCaptains
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SelectCaptainsRequest"
+      responses:
+        "200":
+          description: Captains selected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SelectCaptainsResultDto"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/team-formation/captains:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    get:
+      tags: [Team Formation]
+      summary: Get selected captains for a task post (any course member)
+      operationId: getCaptains
+      responses:
+        "200":
+          description: Selected captains
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PostCaptainDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/invitations/captain/students:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    get:
+      tags: [Team Invitations]
+      summary: Get list of available students for captain to invite
+      operationId: getAvailableStudentsForCaptain
+      responses:
+        "200":
+          description: Available students
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AvailableStudentDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/invitations/captain/send:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    post:
+      tags: [Team Invitations]
+      summary: Send invitation to student (captain only)
+      operationId: sendInvitation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendInvitationRequest"
+      responses:
+        "200":
+          description: Invitation sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamInvitationDto"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/invitations/captain:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    get:
+      tags: [Team Invitations]
+      summary: Get captain's sent invitations
+      operationId: getCaptainInvitations
+      responses:
+        "200":
+          description: Captain's invitations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TeamInvitationDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/invitations/captain/team:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    get:
+      tags: [Team Invitations]
+      summary: Get current team composition for captain
+      operationId: getCaptainTeam
+      responses:
+        "200":
+          description: Captain's current team members
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AvailableStudentDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/invitations/student:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    get:
+      tags: [Team Invitations]
+      summary: Get student's received invitations
+      operationId: getStudentInvitations
+      responses:
+        "200":
+          description: Student's invitations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TeamInvitationDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/invitations/{invitationId}/respond:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+      - name: invitationId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    post:
+      tags: [Team Invitations]
+      summary: Accept or decline invitation (student only)
+      operationId: respondToInvitation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RespondInvitationRequest"
+      responses:
+        "200":
+          description: Invitation responded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamInvitationDto"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/teams/{teamId}/grade:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+      - $ref: "#/components/parameters/TeamId"
+
+    get:
+      tags: [Team Grading]
+      summary: Get team grade for a task post
+      operationId: getTeamGrade
+      responses:
+        "200":
+          description: Team grade data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamGradeDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      tags: [Team Grading]
+      summary: Set or update team grade (teacher only)
+      operationId: upsertTeamGrade
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertTeamGradeRequest"
+      responses:
+        "200":
+          description: Team grade saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamGradeDto"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/teams/{teamId}/grade/distribution:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+      - $ref: "#/components/parameters/TeamId"
+
+    get:
+      tags: [Team Grading]
+      summary: Get team grade distribution details
+      operationId: getTeamGradeDistribution
+      responses:
+        "200":
+          description: Distribution details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamGradeDistributionDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      tags: [Team Grading]
+      summary: Set team grade distribution mode (teacher only)
+      operationId: setTeamGradeDistributionMode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetTeamGradeDistributionModeRequest"
+      responses:
+        "200":
+          description: Distribution mode saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamGradeDistributionDto"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/captain-grade:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    get:
+      tags: [Captain Grade Distribution]
+      summary: Get grade distribution form for captain
+      operationId: getCaptainGradeDistributionForm
+      responses:
+        "200":
+          description: Distribution form with current grades
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamGradeDistributionDto"
+        "400":
+          description: Grade not set or mode is not CAPTAIN_MANUAL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      tags: [Captain Grade Distribution]
+      summary: Save captain's grade distribution
+      operationId: saveCaptainGradeDistribution
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CaptainGradeDistributionRequest"
+      responses:
+        "200":
+          description: Distribution saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamGradeDistributionDto"
+        "400":
+          description: Invalid distribution (sum mismatch, missing members, duplicate entries)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/grade-vote:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    get:
+      tags: [Grade Voting]
+      summary: Get vote status for current user's team
+      operationId: getGradeVoteStatus
+      responses:
+        "200":
+          description: Vote status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VoteStatusDto"
+        "400":
+          description: Vote mode not enabled or grade not set
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    post:
+      tags: [Grade Voting]
+      summary: Submit grade distribution vote
+      operationId: submitGradeVote
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CaptainGradeDistributionRequest"
+      responses:
+        "200":
+          description: Vote submitted, returns updated status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VoteStatusDto"
+        "400":
+          description: Already voted, sum mismatch, or missing members
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/teams/{teamId}/grade-vote:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+      - $ref: "#/components/parameters/TeamId"
+
+    get:
+      tags: [Grade Voting]
+      summary: Get vote status for a specific team (teacher only)
+      operationId: getTeamGradeVoteStatus
+      responses:
+        "200":
+          description: Vote status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VoteStatusDto"
+        "400":
+          description: Vote mode not enabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/teams/{teamId}/grade-vote/finalize:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+      - $ref: "#/components/parameters/TeamId"
+
+    post:
+      tags: [Grade Voting]
+      summary: Finalize voting and save individual grades (teacher only)
+      operationId: finalizeGradeVote
+      responses:
+        "200":
+          description: Voting finalized, individual grades saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamGradeDistributionDto"
+        "400":
+          description: No votes yet or grade not set
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/team-requirement-templates:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+
+    get:
+      tags: [Team Requirement Templates]
+      summary: List team requirement templates
+      operationId: listTeamRequirementTemplates
+      responses:
+        "200":
+          description: Template list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TeamRequirementTemplateDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    post:
+      tags: [Team Requirement Templates]
+      summary: Create team requirement template (teacher only)
+      operationId: createTeamRequirementTemplate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTeamRequirementTemplateRequest"
+      responses:
+        "201":
+          description: Template created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamRequirementTemplateDto"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/team-requirement-templates/{templateId}:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/TemplateId"
+
+    get:
+      tags: [Team Requirement Templates]
+      summary: Get team requirement template details
+      operationId: getTeamRequirementTemplate
+      responses:
+        "200":
+          description: Template details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamRequirementTemplateDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      tags: [Team Requirement Templates]
+      summary: Update team requirement template (teacher only)
+      operationId: updateTeamRequirementTemplate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTeamRequirementTemplateRequest"
+      responses:
+        "200":
+          description: Template updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamRequirementTemplateDto"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      tags: [Team Requirement Templates]
+      summary: Archive team requirement template (teacher only)
+      operationId: archiveTeamRequirementTemplate
+      responses:
+        "204":
+          description: Template archived
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/team-requirement-templates/{templateId}/apply:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/TemplateId"
+
+    post:
+      tags: [Team Requirement Templates]
+      summary: Apply template to a task post (teacher only)
+      operationId: applyTeamRequirementTemplate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApplyTeamRequirementTemplateRequest"
+      responses:
+        "200":
+          description: Template applied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TemplateApplyResultDto"
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
@@ -923,6 +2016,22 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+    delete:
+      tags: [Grading]
+      summary: Remove a grade from a solution (teacher only)
+      operationId: removeGrade
+      responses:
+        "200":
+          description: Grade removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SolutionDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /courses/{courseId}/posts/{postId}/solutions/{solutionId}/comments:
     parameters:
       - $ref: "#/components/parameters/CourseId"
@@ -1064,6 +2173,22 @@ components:
         type: string
         format: uuid
 
+    TeamId:
+      name: teamId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+    TemplateId:
+      name: templateId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
     PageParam:
       name: page
       in: query
@@ -1113,6 +2238,110 @@ components:
     PostType:
       type: string
       enum: [MATERIAL, TASK]
+
+    TeamFormationMode:
+      type: string
+      enum: [FREE, DRAFT, RANDOM_SHUFFLE, CAPTAIN_SELECTION]
+
+    TeamGradeDistributionMode:
+      type: string
+      enum: [MANUAL, AUTO_EQUAL, CAPTAIN_MANUAL, TEAM_VOTE]
+
+    PostCaptainDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        username:
+          type: string
+        displayName:
+          type: string
+
+    SelectCaptainsRequest:
+      type: object
+      properties:
+        reshuffle:
+          type: boolean
+          default: false
+
+    SelectCaptainsResultDto:
+      type: object
+      properties:
+        selectedCaptains:
+          type: integer
+        captains:
+          type: array
+          items:
+            $ref: "#/components/schemas/PostCaptainDto"
+        selectedAt:
+          type: string
+          format: date-time
+
+    TeamInvitationDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        captainId:
+          type: string
+          format: uuid
+        captainUsername:
+          type: string
+        captainDisplayName:
+          type: string
+        studentId:
+          type: string
+          format: uuid
+        studentUsername:
+          type: string
+        studentDisplayName:
+          type: string
+        postId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [PENDING, ACCEPTED, DECLINED]
+        createdAt:
+          type: string
+          format: date-time
+        respondedAt:
+          type: string
+          format: date-time
+
+    SendInvitationRequest:
+      type: object
+      required: [studentId]
+      properties:
+        studentId:
+          type: string
+          format: uuid
+
+    RespondInvitationRequest:
+      type: object
+      required: [action]
+      properties:
+        action:
+          type: string
+          enum: [accept, decline]
+
+    AvailableStudentDto:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+        username:
+          type: string
+        displayName:
+          type: string
+        category:
+          $ref: "#/components/schemas/CourseCategoryDto"
 
     SolutionStatus:
       type: string
@@ -1227,6 +2456,492 @@ components:
           type: integer
           example: 30
 
+    CourseCategoryDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+        active:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    CreateCourseCategoryRequest:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 2000
+        active:
+          type: boolean
+          default: true
+
+    UpdateCourseCategoryRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 2000
+        active:
+          type: boolean
+
+    SetMyCategoryRequest:
+      type: object
+      properties:
+        categoryId:
+          type: string
+          format: uuid
+          nullable: true
+
+    CreateCourseTeamRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        memberIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+
+    CourseTeamMemberDto:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/UserDto"
+        category:
+          $ref: "#/components/schemas/CourseCategoryDto"
+
+    CourseTeamDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        membersCount:
+          type: integer
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/CourseTeamMemberDto"
+        maxSize:
+          type: integer
+          nullable: true
+        selfEnrollmentEnabled:
+          type: boolean
+        isFull:
+          type: boolean
+        categories:
+          type: array
+          items:
+            $ref: "#/components/schemas/CourseCategoryDto"
+        categoryId:
+          type: string
+          format: uuid
+          nullable: true
+        categoryTitle:
+          type: string
+          nullable: true
+
+    CourseTeamAvailabilityDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        currentMembers:
+          type: integer
+        maxSize:
+          type: integer
+          nullable: true
+        isFull:
+          type: boolean
+        isStudentMember:
+          type: boolean
+        categories:
+          type: array
+          items:
+            $ref: "#/components/schemas/CourseCategoryDto"
+        createdAt:
+          type: string
+          format: date-time
+
+    StudentTeamDto:
+      type: object
+      properties:
+        teamId:
+          type: string
+          format: uuid
+        teamName:
+          type: string
+        membersCount:
+          type: integer
+        maxSize:
+          type: integer
+          nullable: true
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/CourseTeamMemberDto"
+        joinedAt:
+          type: string
+          format: date-time
+
+    EnrollmentResponseDto:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        team:
+          $ref: "#/components/schemas/TeamEnrollmentStatusDto"
+
+    TeamEnrollmentStatusDto:
+      type: object
+      properties:
+        teamId:
+          type: string
+          format: uuid
+        teamName:
+          type: string
+        currentMembers:
+          type: integer
+        maxSize:
+          type: integer
+          nullable: true
+
+    TeamFormationModeDto:
+      type: object
+      properties:
+        mode:
+          $ref: "#/components/schemas/TeamFormationMode"
+
+    SetTeamFormationModeRequest:
+      type: object
+      required: [mode]
+      properties:
+        mode:
+          $ref: "#/components/schemas/TeamFormationMode"
+
+    AutoTeamFormationRequest:
+      type: object
+      properties:
+        minTeamSize:
+          type: integer
+          minimum: 1
+        maxTeamSize:
+          type: integer
+          minimum: 1
+        balanceByCategory:
+          type: boolean
+          default: false
+        balanceByRole:
+          type: boolean
+          default: false
+        reshuffle:
+          type: boolean
+          default: false
+
+    AutoTeamFormationResultDto:
+      type: object
+      properties:
+        formedTeams:
+          type: integer
+        assignedStudents:
+          type: integer
+        unassignedStudents:
+          type: integer
+        generatedAt:
+          type: string
+          format: date-time
+
+    AutoFormationStudentDto:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+        username:
+          type: string
+        displayName:
+          type: string
+          nullable: true
+        category:
+          $ref: "#/components/schemas/CourseCategoryDto"
+
+    UpsertTeamGradeRequest:
+      type: object
+      required: [grade]
+      properties:
+        grade:
+          type: integer
+          minimum: 0
+          maximum: 100
+        comment:
+          type: string
+          maxLength: 5000
+
+    TeamGradeDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          nullable: true
+        postId:
+          type: string
+          format: uuid
+        teamId:
+          type: string
+          format: uuid
+        grade:
+          type: integer
+          minimum: 0
+          maximum: 100
+          nullable: true
+        comment:
+          type: string
+          nullable: true
+        distributionMode:
+          $ref: "#/components/schemas/TeamGradeDistributionMode"
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    SetTeamGradeDistributionModeRequest:
+      type: object
+      required: [distributionMode]
+      properties:
+        distributionMode:
+          $ref: "#/components/schemas/TeamGradeDistributionMode"
+
+    StudentDistributedGradeDto:
+      type: object
+      properties:
+        student:
+          $ref: "#/components/schemas/UserDto"
+        grade:
+          type: integer
+          minimum: 0
+          maximum: 100
+          nullable: true
+
+    TeamGradeDistributionDto:
+      type: object
+      properties:
+        teamId:
+          type: string
+          format: uuid
+        teamGrade:
+          type: integer
+          minimum: 0
+          maximum: 100
+          nullable: true
+        distributionMode:
+          $ref: "#/components/schemas/TeamGradeDistributionMode"
+        students:
+          type: array
+          items:
+            $ref: "#/components/schemas/StudentDistributedGradeDto"
+
+    VoterStatusDto:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/UserDto"
+        hasVoted:
+          type: boolean
+
+    VoteStatusDto:
+      type: object
+      properties:
+        teamId:
+          type: string
+          format: uuid
+        teamGrade:
+          type: integer
+          minimum: 0
+          maximum: 100
+          nullable: true
+        finalized:
+          type: boolean
+        voters:
+          type: array
+          items:
+            $ref: "#/components/schemas/VoterStatusDto"
+        myVote:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/StudentDistributedGradeDto"
+        finalDistribution:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/StudentDistributedGradeDto"
+
+    CaptainStudentGradeEntry:
+      type: object
+      required: [studentId, grade]
+      properties:
+        studentId:
+          type: string
+          format: uuid
+        grade:
+          type: integer
+          minimum: 0
+          maximum: 100
+
+    CaptainGradeDistributionRequest:
+      type: object
+      required: [grades]
+      properties:
+        grades:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/CaptainStudentGradeEntry"
+
+    CreateTeamRequirementTemplateRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 2000
+        minTeamSize:
+          type: integer
+          minimum: 1
+          nullable: true
+        maxTeamSize:
+          type: integer
+          minimum: 1
+          nullable: true
+        requiredCategoryId:
+          type: string
+          format: uuid
+          nullable: true
+        requireAudio:
+          type: boolean
+          default: false
+        requireVideo:
+          type: boolean
+          default: false
+
+    UpdateTeamRequirementTemplateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 2000
+        minTeamSize:
+          type: integer
+          minimum: 1
+          nullable: true
+        maxTeamSize:
+          type: integer
+          minimum: 1
+          nullable: true
+        requiredCategoryId:
+          type: string
+          format: uuid
+          nullable: true
+        requireAudio:
+          type: boolean
+          nullable: true
+        requireVideo:
+          type: boolean
+          nullable: true
+        active:
+          type: boolean
+          nullable: true
+
+    TeamRequirementTemplateDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        minTeamSize:
+          type: integer
+          nullable: true
+        maxTeamSize:
+          type: integer
+          nullable: true
+        requiredCategory:
+          $ref: "#/components/schemas/CourseCategoryDto"
+        requireAudio:
+          type: boolean
+        requireVideo:
+          type: boolean
+        active:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        archivedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    ApplyTeamRequirementTemplateRequest:
+      type: object
+      required: [postId]
+      properties:
+        postId:
+          type: string
+          format: uuid
+
+    TemplateApplyResultDto:
+      type: object
+      properties:
+        postId:
+          type: string
+          format: uuid
+        templateId:
+          type: string
+          format: uuid
+        appliedMode:
+          $ref: "#/components/schemas/TeamFormationMode"
+
     PageCourseDto:
       type: object
       properties:
@@ -1327,6 +3042,8 @@ components:
           example: "Read chapter 4 and complete the exercises."
         type:
           $ref: "#/components/schemas/PostType"
+        teamFormationMode:
+          $ref: "#/components/schemas/TeamFormationMode"
         deadline:
           type: string
           format: date-time
@@ -1343,6 +3060,8 @@ components:
         content:
           type: string
           maxLength: 10000
+        teamFormationMode:
+          $ref: "#/components/schemas/TeamFormationMode"
         deadline:
           type: string
           format: date-time
@@ -1361,6 +3080,8 @@ components:
           type: string
         type:
           $ref: "#/components/schemas/PostType"
+        teamFormationMode:
+          $ref: "#/components/schemas/TeamFormationMode"
         deadline:
           type: string
           format: date-time

@@ -117,6 +117,7 @@ public class CourseService {
         return toDto(course, member.getRole(), teacherCount, studentCount);
     }
 
+    @Transactional
     public void deleteCourse(UUID courseId, UUID userId) {
 
         Course course = courseRepository.findById(courseId)
@@ -130,6 +131,7 @@ public class CourseService {
             throw new ForbiddenException("Only teachers can delete the course");
         }
 
+        courseMemberRepository.deleteByCourseId(courseId);
 
         courseRepository.delete(course);
     }

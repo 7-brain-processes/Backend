@@ -1,6 +1,7 @@
 package com.classroom.core.service;
 
 import com.classroom.core.dto.auth.UserDto;
+import com.classroom.core.dto.course.CourseCategoryDto;
 import com.classroom.core.dto.member.MemberDto;
 import com.classroom.core.exception.ForbiddenException;
 import com.classroom.core.exception.ResourceNotFoundException;
@@ -78,6 +79,13 @@ public class CourseMemberService {
                 .user(UserDto.from(member.getUser()))
                 .role(member.getRole())
                 .joinedAt(member.getJoinedAt())
+                .category(member.getCategory() == null ? null : CourseCategoryDto.builder()
+                        .id(member.getCategory().getId())
+                        .title(member.getCategory().getTitle())
+                        .description(member.getCategory().getDescription())
+                        .active(member.getCategory().isActive())
+                        .createdAt(member.getCategory().getCreatedAt())
+                        .build())
                 .build();
     }
 }
