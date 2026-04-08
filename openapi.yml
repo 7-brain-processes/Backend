@@ -25,6 +25,8 @@ tags:
     description: Reusable team requirement templates
   - name: Captain Grade Distribution
     description: Captain-driven grade distribution for team members
+  - name: Grade Voting
+    description: Team member voting for grade distribution
   - name: Team Invitations
     description: Captain-based team formation invitations
   - name: Invites
@@ -1086,6 +1088,117 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /courses/{courseId}/posts/{postId}/grade-vote:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    get:
+      tags: [Grade Voting]
+      summary: Get vote status for current user's team
+      operationId: getGradeVoteStatus
+      responses:
+        "200":
+          description: Vote status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VoteStatusDto"
+        "400":
+          description: Vote mode not enabled or grade not set
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    post:
+      tags: [Grade Voting]
+      summary: Submit grade distribution vote
+      operationId: submitGradeVote
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CaptainGradeDistributionRequest"
+      responses:
+        "200":
+          description: Vote submitted, returns updated status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VoteStatusDto"
+        "400":
+          description: Already voted, sum mismatch, or missing members
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/teams/{teamId}/grade-vote:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+      - $ref: "#/components/parameters/TeamId"
+
+    get:
+      tags: [Grade Voting]
+      summary: Get vote status for a specific team (teacher only)
+      operationId: getTeamGradeVoteStatus
+      responses:
+        "200":
+          description: Vote status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VoteStatusDto"
+        "400":
+          description: Vote mode not enabled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/teams/{teamId}/grade-vote/finalize:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+      - $ref: "#/components/parameters/TeamId"
+
+    post:
+      tags: [Grade Voting]
+      summary: Finalize voting and save individual grades (teacher only)
+      operationId: finalizeGradeVote
+      responses:
+        "200":
+          description: Voting finalized, individual grades saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamGradeDistributionDto"
+        "400":
+          description: No votes yet or grade not set
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /courses/{courseId}/team-requirement-templates:
     parameters:
       - $ref: "#/components/parameters/CourseId"
@@ -2132,7 +2245,7 @@ components:
 
     TeamGradeDistributionMode:
       type: string
-      enum: [MANUAL, AUTO_EQUAL, CAPTAIN_MANUAL]
+      enum: [MANUAL, AUTO_EQUAL, CAPTAIN_MANUAL, TEAM_VOTE]
 
     PostCaptainDto:
       type: object
@@ -2653,6 +2766,42 @@ components:
           $ref: "#/components/schemas/TeamGradeDistributionMode"
         students:
           type: array
+          items:
+            $ref: "#/components/schemas/StudentDistributedGradeDto"
+
+    VoterStatusDto:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/UserDto"
+        hasVoted:
+          type: boolean
+
+    VoteStatusDto:
+      type: object
+      properties:
+        teamId:
+          type: string
+          format: uuid
+        teamGrade:
+          type: integer
+          minimum: 0
+          maximum: 100
+          nullable: true
+        finalized:
+          type: boolean
+        voters:
+          type: array
+          items:
+            $ref: "#/components/schemas/VoterStatusDto"
+        myVote:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/StudentDistributedGradeDto"
+        finalDistribution:
+          type: array
+          nullable: true
           items:
             $ref: "#/components/schemas/StudentDistributedGradeDto"
 
