@@ -115,6 +115,17 @@ public class TeamGradeService {
                     .grade(entry.getGrade())
                     .build())
                 .toList();
+        } else if (mode == TeamGradeDistributionMode.CAPTAIN_MANUAL && grade != null) {
+            students = teamStudentGradeRepository.findByTeamGradeIdOrderByStudentIdAsc(grade.getId())
+                .stream()
+                .map(entry -> StudentDistributedGradeDto.builder()
+                    .student(UserDto.from(entry.getStudent()))
+                    .grade(entry.getGrade())
+                    .build())
+                .toList();
+            if (students.isEmpty()) {
+                students = distribute(members, teamGrade, TeamGradeDistributionMode.MANUAL);
+            }
         } else {
             students = distribute(members, teamGrade, mode);
         }
@@ -148,6 +159,8 @@ public class TeamGradeService {
         if (saved.getDistributionMode() == TeamGradeDistributionMode.AUTO_EQUAL) {
             ensurePersistedAutoDistribution(courseId, saved, true);
         } else {
+            // For MANUAL and CAPTAIN_MANUAL: clear any previously computed grades.
+            // For CAPTAIN_MANUAL the captain will fill them in via CaptainGradeController.
             teamStudentGradeRepository.deleteByTeamGradeId(saved.getId());
             teamStudentGradeRepository.flush();
         }
