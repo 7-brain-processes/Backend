@@ -6,6 +6,7 @@ import com.classroom.core.dto.auth.RegisterRequest;
 import com.classroom.core.dto.file.FileDto;
 import com.classroom.core.model.*;
 import com.classroom.core.repository.*;
+import com.classroom.core.support.TestDatabaseCleaner;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -34,14 +35,11 @@ class PostMaterialControllerIT {
     @Autowired private CourseMemberRepository courseMemberRepository;
     @Autowired private PostRepository postRepository;
     @Autowired private PostFileRepository postFileRepository;
+    @Autowired private TestDatabaseCleaner testDatabaseCleaner;
 
     @BeforeEach
     void setUp() {
-        postFileRepository.deleteAll();
-        postRepository.deleteAll();
-        courseMemberRepository.deleteAll();
-        courseRepository.deleteAll();
-        userRepository.deleteAll();
+        testDatabaseCleaner.clean();
     }
 
     private String registerAndGetToken(String username) {

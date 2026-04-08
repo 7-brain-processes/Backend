@@ -3,6 +3,7 @@ package com.classroom.core.dto.post;
 import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
+import com.classroom.core.model.TeamFormationMode;
 
 import java.time.Instant;
 
@@ -17,4 +18,6 @@ public class UpdatePostRequest {
 
     @Future
     private Instant deadline;
+
+    private TeamFormationMode teamFormationMode;
 }

@@ -11,6 +11,7 @@ import com.classroom.core.model.Course;
 import com.classroom.core.model.CourseMember;
 import com.classroom.core.model.CourseRole;
 import com.classroom.core.model.User;
+import com.classroom.core.support.TestDatabaseCleaner;
 import com.classroom.core.repository.CourseMemberRepository;
 import com.classroom.core.repository.CourseRepository;
 import com.classroom.core.repository.UserRepository;
@@ -44,11 +45,12 @@ class CourseControllerIT {
     @Autowired
     private CourseMemberRepository courseMemberRepository;
 
+    @Autowired
+    private TestDatabaseCleaner testDatabaseCleaner;
+
     @BeforeEach
     void setUp() {
-        courseMemberRepository.deleteAll();
-        courseRepository.deleteAll();
-        userRepository.deleteAll();
+        testDatabaseCleaner.clean();
     }
 
     private RegisterRequest registerRequest(String username, String password, String displayName) {

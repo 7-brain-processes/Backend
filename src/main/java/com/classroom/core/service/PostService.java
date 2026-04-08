@@ -4,6 +4,7 @@ import com.classroom.core.dto.auth.UserDto;
 import com.classroom.core.dto.post.CreatePostRequest;
 import com.classroom.core.dto.post.PostDto;
 import com.classroom.core.dto.post.UpdatePostRequest;
+import com.classroom.core.exception.BadRequestException;
 import com.classroom.core.exception.ForbiddenException;
 import com.classroom.core.exception.ResourceNotFoundException;
 import com.classroom.core.model.Course;
@@ -11,6 +12,7 @@ import com.classroom.core.model.CourseMember;
 import com.classroom.core.model.CourseRole;
 import com.classroom.core.model.Post;
 import com.classroom.core.model.PostType;
+import com.classroom.core.model.TeamFormationMode;
 import com.classroom.core.model.User;
 import com.classroom.core.repository.CourseMemberRepository;
 import com.classroom.core.repository.CourseRepository;
@@ -54,6 +56,7 @@ public class PostService {
                 .title(request.getTitle())
                 .content(request.getContent())
                 .type(request.getType())
+                .teamFormationMode(resolveInitialTeamFormationMode(request))
                 .deadline(request.getDeadline())
                 .build();
 
@@ -62,30 +65,20 @@ public class PostService {
     }
 
     public PostDto getPost(UUID courseId, UUID postId, UUID userId) {
-        Course course = getCourseOrThrow(courseId);
+        getCourseOrThrow(courseId);
         ensureMember(courseId, userId);
 
-        Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new ResourceNotFoundException("Post not found"));
-
-        if (!post.getCourse().getId().equals(course.getId())) {
-            throw new ResourceNotFoundException("Post not found");
-        }
+        Post post = getPostInCourseOrThrow(courseId, postId);
 
         return toDto(post);
     }
 
     @Transactional
     public PostDto updatePost(UUID courseId, UUID postId, UpdatePostRequest request, UUID userId) {
-        Course course = getCourseOrThrow(courseId);
+        getCourseOrThrow(courseId);
         ensureTeacher(courseId, userId);
 
-        Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new ResourceNotFoundException("Post not found"));
-
-        if (!post.getCourse().getId().equals(course.getId())) {
-            throw new ResourceNotFoundException("Post not found");
-        }
+        Post post = getPostInCourseOrThrow(courseId, postId);
 
         if (request.getTitle() != null) {
             post.setTitle(request.getTitle());
@@ -96,22 +89,54 @@ public class PostService {
         if (request.getDeadline() != null) {
             post.setDeadline(request.getDeadline());
         }
+        if (request.getTeamFormationMode() != null) {
+            if (post.getType() != PostType.TASK) {
+                throw new BadRequestException("Team formation mode is only available for task posts");
+            }
+            post.setTeamFormationMode(request.getTeamFormationMode());
+        }
 
         Post saved = postRepository.save(post);
         return toDto(saved);
     }
 
+    public TeamFormationMode getTeamFormationMode(UUID courseId, UUID postId, UUID userId) {
+        getCourseOrThrow(courseId);
+        ensureMember(courseId, userId);
+
+        Post post = getPostInCourseOrThrow(courseId, postId);
+        if (post.getType() != PostType.TASK) {
+            throw new BadRequestException("Team formation mode is only available for task posts");
+        }
+
+        return resolveTeamFormationMode(post);
+    }
+
     @Transactional
-    public void deletePost(UUID courseId, UUID postId, UUID userId) {
-        Course course = getCourseOrThrow(courseId);
+    public TeamFormationMode setTeamFormationMode(UUID courseId, UUID postId, TeamFormationMode mode, UUID userId) {
+        if (mode == null) {
+            throw new BadRequestException("Team formation mode is required");
+        }
+
+        getCourseOrThrow(courseId);
         ensureTeacher(courseId, userId);
 
-        Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new ResourceNotFoundException("Post not found"));
-
-        if (!post.getCourse().getId().equals(course.getId())) {
-            throw new ResourceNotFoundException("Post not found");
+        Post post = getPostInCourseOrThrow(courseId, postId);
+        if (post.getType() != PostType.TASK) {
+            throw new BadRequestException("Team formation mode is only available for task posts");
         }
+
+        post.setTeamFormationMode(mode);
+        postRepository.save(post);
+        return mode;
+    }
+
+    @Transactional
+    public void deletePost(UUID courseId, UUID postId, UUID userId) {
+        getCourseOrThrow(courseId);
+        ensureTeacher(courseId, userId);
+
+        Post post = getPostInCourseOrThrow(courseId, postId);
 
         postRepository.delete(post);
         postRepository.flush();
@@ -144,6 +169,7 @@ public class PostService {
                 .title(post.getTitle())
                 .content(post.getContent())
                 .type(post.getType())
+                .teamFormationMode(resolveTeamFormationMode(post))
                 .deadline(post.getDeadline())
                 .author(post.getAuthor() == null ? null : UserDto.from(post.getAuthor()))
                 .materialsCount(post.getFiles() == null ? 0 : post.getFiles().size())
@@ -153,5 +179,39 @@ public class PostService {
                 .createdAt(post.getCreatedAt())
                 .updatedAt(post.getUpdatedAt())
                 .build();
+    }
+
+    private Post getPostInCourseOrThrow(UUID courseId, UUID postId) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new ResourceNotFoundException("Post not found"));
+
+        if (!post.getCourse().getId().equals(courseId)) {
+            throw new ResourceNotFoundException("Post not found");
+        }
+
+        return post;
+    }
+
+    private TeamFormationMode resolveInitialTeamFormationMode(CreatePostRequest request) {
+        if (request.getType() != PostType.TASK) {
+            if (request.getTeamFormationMode() != null) {
+                throw new BadRequestException("Team formation mode is only available for task posts");
+            }
+            return null;
+        }
+
+        return request.getTeamFormationMode() == null
+                ? TeamFormationMode.FREE
+                : request.getTeamFormationMode();
+    }
+
+    private TeamFormationMode resolveTeamFormationMode(Post post) {
+        if (post.getType() != PostType.TASK) {
+            return null;
+        }
+
+        return post.getTeamFormationMode() == null
+                ? TeamFormationMode.FREE
+                : post.getTeamFormationMode();
     }
 }

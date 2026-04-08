@@ -15,6 +15,7 @@ import com.classroom.core.repository.CourseMemberRepository;
 import com.classroom.core.repository.CourseRepository;
 import com.classroom.core.repository.InviteRepository;
 import com.classroom.core.repository.UserRepository;
+import com.classroom.core.support.TestDatabaseCleaner;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -48,12 +49,12 @@ class InviteControllerIT {
     @Autowired
     private InviteRepository inviteRepository;
 
+    @Autowired
+    private TestDatabaseCleaner testDatabaseCleaner;
+
     @BeforeEach
     void setUp() {
-        inviteRepository.deleteAll();
-        courseMemberRepository.deleteAll();
-        courseRepository.deleteAll();
-        userRepository.deleteAll();
+        testDatabaseCleaner.clean();
     }
 
     private RegisterRequest registerRequest(String username, String password, String displayName) {

@@ -2,6 +2,7 @@ package com.classroom.core.dto.post;
 
 import com.classroom.core.dto.auth.UserDto;
 import com.classroom.core.model.PostType;
+import com.classroom.core.model.TeamFormationMode;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -17,6 +18,7 @@ public class PostDto {
     private String title;
     private String content;
     private PostType type;
+    private TeamFormationMode teamFormationMode;
     private Instant deadline;
     private UserDto author;
     private int materialsCount;
