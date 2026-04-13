@@ -19,6 +19,7 @@ public class PostDto {
     private String content;
     private PostType type;
     private TeamFormationMode teamFormationMode;
+    private UUID teamRequirementTemplateId;
     private Instant deadline;
     private UserDto author;
     private int materialsCount;

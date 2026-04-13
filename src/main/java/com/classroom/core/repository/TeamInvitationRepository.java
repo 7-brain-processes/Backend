@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -31,6 +32,8 @@ public interface TeamInvitationRepository extends JpaRepository<TeamInvitation, 
     long countActiveInvitationsByCaptainAndPost(@Param("captainId") UUID captainId, @Param("postId") UUID postId);
 
     @Modifying
-    @Query("UPDATE TeamInvitation ti SET ti.status = :status, ti.respondedAt = CURRENT_TIMESTAMP WHERE ti.id = :id")
-    void updateStatus(@Param("id") UUID id, @Param("status") TeamInvitation.InvitationStatus status);
+    @Query("UPDATE TeamInvitation ti SET ti.status = :status, ti.respondedAt = :respondedAt WHERE ti.id = :id")
+    void updateStatus(@Param("id") UUID id,
+                      @Param("status") TeamInvitation.InvitationStatus status,
+                      @Param("respondedAt") Instant respondedAt);
 }

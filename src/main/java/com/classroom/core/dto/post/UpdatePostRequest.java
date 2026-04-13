@@ -6,6 +6,7 @@ import lombok.Data;
 import com.classroom.core.model.TeamFormationMode;
 
 import java.time.Instant;
+import java.util.UUID;
 
 @Data
 public class UpdatePostRequest {
@@ -20,4 +21,6 @@ public class UpdatePostRequest {
     private Instant deadline;
 
     private TeamFormationMode teamFormationMode;
+
+    private UUID teamRequirementTemplateId;
 }

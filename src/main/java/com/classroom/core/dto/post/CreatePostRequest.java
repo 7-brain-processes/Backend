@@ -9,6 +9,7 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.time.Instant;
+import java.util.UUID;
 
 @Data
 public class CreatePostRequest {
@@ -24,6 +25,8 @@ public class CreatePostRequest {
     private PostType type;
 
     private TeamFormationMode teamFormationMode;
+
+    private UUID teamRequirementTemplateId;
 
     @Future
     private Instant deadline;

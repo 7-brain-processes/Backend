@@ -3044,6 +3044,11 @@ components:
           $ref: "#/components/schemas/PostType"
         teamFormationMode:
           $ref: "#/components/schemas/TeamFormationMode"
+        teamRequirementTemplateId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Optional team requirement template to apply during task creation
         deadline:
           type: string
           format: date-time
@@ -3062,6 +3067,11 @@ components:
           maxLength: 10000
         teamFormationMode:
           $ref: "#/components/schemas/TeamFormationMode"
+        teamRequirementTemplateId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Optional team requirement template to apply to this task post
         deadline:
           type: string
           format: date-time
@@ -3082,6 +3092,10 @@ components:
           $ref: "#/components/schemas/PostType"
         teamFormationMode:
           $ref: "#/components/schemas/TeamFormationMode"
+        teamRequirementTemplateId:
+          type: string
+          format: uuid
+          nullable: true
         deadline:
           type: string
           format: date-time

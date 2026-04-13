@@ -4,6 +4,7 @@ import com.classroom.core.dto.auth.UserDto;
 import com.classroom.core.dto.post.CreatePostRequest;
 import com.classroom.core.dto.post.PostDto;
 import com.classroom.core.dto.post.UpdatePostRequest;
+import com.classroom.core.dto.team.ApplyTeamRequirementTemplateRequest;
 import com.classroom.core.exception.BadRequestException;
 import com.classroom.core.exception.ForbiddenException;
 import com.classroom.core.exception.ResourceNotFoundException;
@@ -33,6 +34,7 @@ public class PostService {
     private final PostRepository postRepository;
     private final CourseRepository courseRepository;
     private final CourseMemberRepository courseMemberRepository;
+    private final TeamRequirementTemplateService teamRequirementTemplateService;
 
     public Page<PostDto> listPosts(UUID courseId, PostType type, Pageable pageable, UUID userId) {
         getCourseOrThrow(courseId);
@@ -61,6 +63,12 @@ public class PostService {
                 .build();
 
         Post saved = postRepository.save(post);
+
+        if (request.getTeamRequirementTemplateId() != null) {
+            applyTemplateToPost(courseId, saved.getId(), request.getTeamRequirementTemplateId(), userId);
+            saved = getPostInCourseOrThrow(courseId, saved.getId());
+        }
+
         return toDto(saved);
     }
 
@@ -97,6 +105,12 @@ public class PostService {
         }
 
         Post saved = postRepository.save(post);
+
+        if (request.getTeamRequirementTemplateId() != null) {
+            applyTemplateToPost(courseId, saved.getId(), request.getTeamRequirementTemplateId(), userId);
+            saved = getPostInCourseOrThrow(courseId, saved.getId());
+        }
+
         return toDto(saved);
     }
 
@@ -170,6 +184,9 @@ public class PostService {
                 .content(post.getContent())
                 .type(post.getType())
                 .teamFormationMode(resolveTeamFormationMode(post))
+                .teamRequirementTemplateId(post.getTeamRequirementTemplate() == null
+                    ? null
+                    : post.getTeamRequirementTemplate().getId())
                 .deadline(post.getDeadline())
                 .author(post.getAuthor() == null ? null : UserDto.from(post.getAuthor()))
                 .materialsCount(post.getFiles() == null ? 0 : post.getFiles().size())
@@ -213,5 +230,11 @@ public class PostService {
         return post.getTeamFormationMode() == null
                 ? TeamFormationMode.FREE
                 : post.getTeamFormationMode();
+    }
+
+    private void applyTemplateToPost(UUID courseId, UUID postId, UUID templateId, UUID userId) {
+        ApplyTeamRequirementTemplateRequest applyRequest = new ApplyTeamRequirementTemplateRequest();
+        applyRequest.setPostId(postId);
+        teamRequirementTemplateService.applyTemplate(courseId, templateId, applyRequest, userId);
     }
 }
