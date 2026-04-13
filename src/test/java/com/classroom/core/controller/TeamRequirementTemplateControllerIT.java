@@ -1,5 +1,6 @@
 package com.classroom.core.controller;
 
+import com.classroom.core.TestcontainersConfig;
 import com.classroom.core.dto.auth.AuthResponse;
 import com.classroom.core.dto.auth.RegisterRequest;
 import com.classroom.core.dto.team.TeamRequirementTemplateDto;
@@ -28,6 +29,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -41,6 +43,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@Import(TestcontainersConfig.class)
 class TeamRequirementTemplateControllerIT {
 
     @Autowired

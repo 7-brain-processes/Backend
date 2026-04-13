@@ -1,5 +1,6 @@
 package com.classroom.core.controller;
 
+import com.classroom.core.TestcontainersConfig;
 import com.classroom.core.dto.auth.AuthResponse;
 import com.classroom.core.dto.auth.RegisterRequest;
 import com.classroom.core.dto.team.TeamGradeDistributionDto;
@@ -10,6 +11,8 @@ import com.classroom.core.model.CourseRole;
 import com.classroom.core.model.CourseTeam;
 import com.classroom.core.model.Post;
 import com.classroom.core.model.PostType;
+import com.classroom.core.model.TeamGrade;
+import com.classroom.core.model.TeamGradeDistributionMode;
 import com.classroom.core.model.TeamStudentGrade;
 import com.classroom.core.model.User;
 import com.classroom.core.repository.CourseMemberRepository;
@@ -25,6 +28,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -38,6 +42,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@Import(TestcontainersConfig.class)
 class TeamGradeControllerIT {
 
     @Autowired
@@ -301,7 +306,22 @@ class TeamGradeControllerIT {
                     .reduce(0, Integer::sum);
             assertThat(initialSum).isEqualTo(100);
 
-            restTemplate.exchange(base, HttpMethod.PUT, gradeRequest(teacherToken, 97, "recalculated"), TeamGradeDto.class);
+                ResponseEntity<TeamGradeDto> updateGradeResponse = restTemplate.exchange(
+                    base,
+                    HttpMethod.PUT,
+                    gradeRequest(teacherToken, 97, "recalculated"),
+                    TeamGradeDto.class
+                );
+
+                assertThat(updateGradeResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(updateGradeResponse.getBody()).isNotNull();
+                assertThat(updateGradeResponse.getBody().getGrade()).isEqualTo(97);
+
+                TeamGrade persistedTeamGrade = teamGradeRepository
+                    .findByPostIdAndTeamId(post.getId(), team.getId())
+                    .orElseThrow();
+                assertThat(persistedTeamGrade.getGrade()).isEqualTo(97);
+                assertThat(persistedTeamGrade.getDistributionMode()).isEqualTo(TeamGradeDistributionMode.AUTO_EQUAL);
 
             ResponseEntity<TeamGradeDistributionDto> distributionResponse = restTemplate.exchange(
                     base + "/distribution",

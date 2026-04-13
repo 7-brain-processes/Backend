@@ -14,6 +14,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -21,6 +22,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -326,7 +328,7 @@ class TeamInvitationServiceTest {
         TeamInvitationDto result = service.respondToInvitation(courseId, postId, invitationId,
                 RespondInvitationRequest.builder().action("decline").build(), studentId);
 
-        verify(invitationRepository).updateStatus(invitationId, TeamInvitation.InvitationStatus.DECLINED);
+                verify(invitationRepository).updateStatus(eq(invitationId), eq(TeamInvitation.InvitationStatus.DECLINED), any(Instant.class));
         assertThat(result.getStatus()).isEqualTo("DECLINED");
     }
 

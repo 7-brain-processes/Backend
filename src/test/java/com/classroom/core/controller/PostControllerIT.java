@@ -12,10 +12,12 @@ import com.classroom.core.model.CourseMember;
 import com.classroom.core.model.CourseRole;
 import com.classroom.core.model.Post;
 import com.classroom.core.model.PostType;
+import com.classroom.core.model.TeamRequirementTemplate;
 import com.classroom.core.model.User;
 import com.classroom.core.repository.CourseMemberRepository;
 import com.classroom.core.repository.CourseRepository;
 import com.classroom.core.repository.PostRepository;
+import com.classroom.core.repository.TeamRequirementTemplateRepository;
 import com.classroom.core.repository.UserRepository;
 import com.classroom.core.support.TestDatabaseCleaner;
 import org.junit.jupiter.api.BeforeEach;
@@ -52,6 +54,9 @@ class PostControllerIT {
 
     @Autowired
     private PostRepository postRepository;
+
+    @Autowired
+    private TeamRequirementTemplateRepository teamRequirementTemplateRepository;
 
     @Autowired
     private TestDatabaseCleaner testDatabaseCleaner;
@@ -242,6 +247,77 @@ class PostControllerIT {
             );
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        }
+
+        @Test
+        void returns400_whenDeadlineIsInThePast() {
+            String token = registerAndGetToken("teacher1", "password123");
+            User teacher = userByUsername("teacher1");
+
+            Course course = createCourseEntity("Java", "Course");
+            addMember(course, teacher, CourseRole.TEACHER);
+
+            CreatePostRequest request = new CreatePostRequest();
+            request.setTitle("Assignment 1");
+            request.setContent("Submit solution");
+            request.setType(PostType.TASK);
+            request.setDeadline(Instant.now().minusSeconds(3600));
+
+            HttpHeaders headers = bearerHeaders(token);
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            ResponseEntity<String> response = restTemplate.exchange(
+                    "/api/v1/courses/" + course.getId() + "/posts",
+                    HttpMethod.POST,
+                    new HttpEntity<>(request, headers),
+                    String.class
+            );
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        }
+
+        @Test
+        void returns201_andAppliesTemplate_whenTaskCreatedWithTemplateId() {
+            String token = registerAndGetToken("teacher1", "password123");
+            User teacher = userByUsername("teacher1");
+
+            registerAndGetToken("student1", "password123");
+            User student = userByUsername("student1");
+
+            Course course = createCourseEntity("Java", "Course");
+            addMember(course, teacher, CourseRole.TEACHER);
+            addMember(course, student, CourseRole.STUDENT);
+
+            TeamRequirementTemplate template = teamRequirementTemplateRepository.save(
+                    TeamRequirementTemplate.builder()
+                            .course(course)
+                            .name("Template A")
+                        .minTeamSize(1)
+                            .maxTeamSize(3)
+                            .active(true)
+                            .build()
+            );
+
+            CreatePostRequest request = new CreatePostRequest();
+            request.setTitle("Task with template");
+            request.setContent("Solve this task");
+            request.setType(PostType.TASK);
+            request.setTeamRequirementTemplateId(template.getId());
+
+            HttpHeaders headers = bearerHeaders(token);
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            ResponseEntity<PostDto> response = restTemplate.exchange(
+                    "/api/v1/courses/" + course.getId() + "/posts",
+                    HttpMethod.POST,
+                    new HttpEntity<>(request, headers),
+                    PostDto.class
+            );
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getTeamRequirementTemplateId()).isEqualTo(template.getId());
+            assertThat(response.getBody().getTeamFormationMode()).isNotNull();
         }
     }
 
