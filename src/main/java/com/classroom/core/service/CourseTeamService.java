@@ -198,10 +198,10 @@ public class CourseTeamService {
             throw new ForbiddenException("Only students can view available teams");
         }
 
-        Post post = getPostOrThrow(postId);
+        getPostOrThrow(courseId, postId);
         
         List<CourseTeam> teams = courseTeamRepository
-                .findByPostIdAndSelfEnrollmentEnabledOrderByCreatedAtAsc(postId, true);
+            .findByPostIdOrderByCreatedAtAsc(postId);
 
         UUID studentTeamId = findStudentTeamInPost(courseId, studentUserId, postId)
                 .map(CourseMember::getTeam)
@@ -229,6 +229,7 @@ public class CourseTeamService {
                             .name(team.getName())
                             .currentMembers(memberCount)
                             .maxSize(team.getMaxSize())
+                            .selfEnrollmentEnabled(team.isSelfEnrollmentEnabled())
                             .isFull(isFull)
                             .isStudentMember(isStudentMember)
                             .categories(teamCategories)
@@ -247,7 +248,7 @@ public class CourseTeamService {
             throw new ForbiddenException("Only students can view team information");
         }
 
-        getPostOrThrow(postId);
+        getPostOrThrow(courseId, postId);
 
         CourseMember teamMember = findStudentTeamInPost(courseId, studentUserId, postId)
                 .orElseThrow(() -> new ResourceNotFoundException("Student is not in any team for this assignment"));
@@ -279,7 +280,7 @@ public class CourseTeamService {
             throw new ForbiddenException("Only students can enroll in teams");
         }
 
-        Post post = getPostOrThrow(postId);
+        getPostOrThrow(courseId, postId);
         
         CourseTeam team = courseTeamRepository.findByPostIdAndId(postId, teamId)
                 .orElseThrow(() -> new ResourceNotFoundException("Team not found or not available for self-enrollment"));
@@ -322,7 +323,7 @@ public class CourseTeamService {
             throw new ForbiddenException("Only students can leave teams");
         }
 
-        Post post = getPostOrThrow(postId);
+        getPostOrThrow(courseId, postId);
         
         CourseTeam team = courseTeamRepository.findByPostIdAndId(postId, teamId)
                 .orElseThrow(() -> new ResourceNotFoundException("Team not found"));
@@ -379,9 +380,15 @@ public class CourseTeamService {
         return courseMemberRepository.findStudentTeamInPost(courseId, userId, postId);
     }
 
-    private Post getPostOrThrow(UUID postId) {
-        return postRepository.findById(postId)
+    private Post getPostOrThrow(UUID courseId, UUID postId) {
+        Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new ResourceNotFoundException("Post (assignment) not found"));
+
+        if (!post.getCourse().getId().equals(courseId)) {
+            throw new ResourceNotFoundException("Post (assignment) not found");
+        }
+
+        return post;
     }
 }
 
