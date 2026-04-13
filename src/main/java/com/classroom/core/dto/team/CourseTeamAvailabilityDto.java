@@ -18,12 +18,14 @@ public class CourseTeamAvailabilityDto {
     private String name;
     private int currentMembers;
     private Integer maxSize;
+    private boolean selfEnrollmentEnabled;
     private boolean isFull;
     private boolean isStudentMember;
     private List<CourseCategoryDto> categories;
     private Instant createdAt;
 
     public CourseTeamAvailabilityDto() {
+        this.selfEnrollmentEnabled = false;
         this.isFull = false;
         this.isStudentMember = false;
     }

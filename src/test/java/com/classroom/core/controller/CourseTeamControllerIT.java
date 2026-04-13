@@ -14,6 +14,7 @@ import com.classroom.core.model.CourseRole;
 import com.classroom.core.model.CourseTeam;
 import com.classroom.core.model.Post;
 import com.classroom.core.model.PostType;
+import com.classroom.core.model.TeamFormationMode;
 import com.classroom.core.model.User;
 import com.classroom.core.repository.CourseCategoryRepository;
 import com.classroom.core.repository.CourseMemberRepository;
@@ -168,6 +169,19 @@ class CourseTeamControllerIT {
                         .build()
         );
     }
+
+        private Post createPost(Course course, User author, String title, TeamFormationMode mode) {
+                return postRepository.save(
+                                Post.builder()
+                                                .course(course)
+                                                .author(author)
+                                                .title(title)
+                                                .content("content")
+                                                .type(PostType.TASK)
+                                                .teamFormationMode(mode)
+                                                .build()
+                );
+        }
 
     private CourseCategory createCategory(Course course, String title) {
         return courseCategoryRepository.save(
@@ -386,8 +400,81 @@ class CourseTeamControllerIT {
             assertThat(response.getBody()).isNotNull();
             assertThat(response.getBody()).hasSize(1);
             assertThat(response.getBody().get(0).getName()).isEqualTo("Team A");
+                        assertThat(response.getBody().get(0).isSelfEnrollmentEnabled()).isTrue();
             assertThat(response.getBody().get(0).isFull()).isFalse();
             assertThat(response.getBody().get(0).isStudentMember()).isFalse();
+        }
+
+        @Test
+        void listTeamsForEnrollment_showsTeams_whenModeIsRandomShuffleEvenIfSelfEnrollmentDisabled() {
+                        registerAndGetToken("teacher1", "password123");
+            String studentToken = registerAndGetToken("student1", "password123");
+
+            User teacher = userByUsername("teacher1");
+            User student = userByUsername("student1");
+
+            Course course = createCourseEntity("Java", "Course");
+            addMember(course, teacher, CourseRole.TEACHER);
+            addMember(course, student, CourseRole.STUDENT);
+
+            Post post = createPost(course, teacher, "Task random", TeamFormationMode.RANDOM_SHUFFLE);
+
+            courseTeamRepository.save(CourseTeam.builder()
+                    .course(course)
+                    .post(post)
+                    .name("Auto Team 1")
+                    .selfEnrollmentEnabled(false)
+                    .maxSize(2)
+                    .build());
+
+            ResponseEntity<List<CourseTeamAvailabilityDto>> response = restTemplate.exchange(
+                    "/api/v1/courses/" + course.getId() + "/posts/" + post.getId() + "/teams",
+                    HttpMethod.GET,
+                    authorizedRequest(studentToken),
+                    new ParameterizedTypeReference<>() {}
+            );
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody()).hasSize(1);
+            assertThat(response.getBody().get(0).getName()).isEqualTo("Auto Team 1");
+            assertThat(response.getBody().get(0).isSelfEnrollmentEnabled()).isFalse();
+        }
+
+        @Test
+        void listTeamsForEnrollment_showsTeams_whenModeIsFreeEvenIfSelfEnrollmentDisabled() {
+            registerAndGetToken("teacher1", "password123");
+            String studentToken = registerAndGetToken("student1", "password123");
+
+            User teacher = userByUsername("teacher1");
+            User student = userByUsername("student1");
+
+            Course course = createCourseEntity("Java", "Course");
+            addMember(course, teacher, CourseRole.TEACHER);
+            addMember(course, student, CourseRole.STUDENT);
+
+            Post post = createPost(course, teacher, "Task free", TeamFormationMode.FREE);
+
+            courseTeamRepository.save(CourseTeam.builder()
+                    .course(course)
+                    .post(post)
+                    .name("Free Team 1")
+                    .selfEnrollmentEnabled(false)
+                    .maxSize(3)
+                    .build());
+
+            ResponseEntity<List<CourseTeamAvailabilityDto>> response = restTemplate.exchange(
+                    "/api/v1/courses/" + course.getId() + "/posts/" + post.getId() + "/teams",
+                    HttpMethod.GET,
+                    authorizedRequest(studentToken),
+                    new ParameterizedTypeReference<>() {}
+            );
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody()).hasSize(1);
+            assertThat(response.getBody().get(0).getName()).isEqualTo("Free Team 1");
+            assertThat(response.getBody().get(0).isSelfEnrollmentEnabled()).isFalse();
         }
 
         @Test
