@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -140,8 +141,10 @@ public class TeamInvitationService {
             throw new BadRequestException("Invalid action");
         }
 
-        invitationRepository.updateStatus(invitationId, newStatus);
+        Instant respondedAt = Instant.now();
+        invitationRepository.updateStatus(invitationId, newStatus, respondedAt);
         invitation.setStatus(newStatus);
+        invitation.setRespondedAt(respondedAt);
         return toDto(invitation);
     }
 

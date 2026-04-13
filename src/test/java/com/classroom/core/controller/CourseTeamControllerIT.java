@@ -1,5 +1,6 @@
 package com.classroom.core.controller;
 
+import com.classroom.core.TestcontainersConfig;
 import com.classroom.core.dto.auth.AuthResponse;
 import com.classroom.core.dto.auth.RegisterRequest;
 import com.classroom.core.dto.team.CourseTeamDto;
@@ -44,6 +45,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@Import(TestcontainersConfig.class)
 class CourseTeamControllerIT {
 
     @Autowired

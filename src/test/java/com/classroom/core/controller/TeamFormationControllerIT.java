@@ -1,5 +1,6 @@
 package com.classroom.core.controller;
 
+import com.classroom.core.TestcontainersConfig;
 import com.classroom.core.dto.auth.AuthResponse;
 import com.classroom.core.dto.auth.RegisterRequest;
 import com.classroom.core.dto.team.AutoFormationStudentDto;
@@ -28,6 +29,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -46,6 +48,7 @@ import java.util.stream.Collectors;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@Import(TestcontainersConfig.class)
 class TeamFormationControllerIT {
 
     @Autowired

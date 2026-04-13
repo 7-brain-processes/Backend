@@ -42,6 +42,9 @@ class PostServiceTest {
     @Mock
     private CourseMemberRepository courseMemberRepository;
 
+        @Mock
+        private TeamRequirementTemplateService teamRequirementTemplateService;
+
     @InjectMocks
     private PostService postService;
 
@@ -107,6 +110,50 @@ class PostServiceTest {
         assertThat(result.getType()).isEqualTo(PostType.MATERIAL);
         verify(postRepository).save(any(Post.class));
     }
+
+        @Test
+        void createPost_appliesTemplateWhenTemplateIdProvided() {
+                Course course = buildCourse();
+                CourseMember teacher = buildMember(course, CourseRole.TEACHER);
+                UUID templateId = UUID.randomUUID();
+
+                CreatePostRequest request = new CreatePostRequest();
+                request.setTitle("Task 1");
+                request.setContent("Solve");
+                request.setType(PostType.TASK);
+                request.setTeamRequirementTemplateId(templateId);
+
+                when(courseRepository.findById(courseId)).thenReturn(Optional.of(course));
+                when(courseMemberRepository.findByCourseIdAndUserId(courseId, userId)).thenReturn(Optional.of(teacher));
+                when(postRepository.save(any(Post.class))).thenAnswer(inv -> {
+                        Post p = inv.getArgument(0);
+                        p.setId(postId);
+                        p.setCreatedAt(Instant.now());
+                        p.setUpdatedAt(Instant.now());
+                        return p;
+                });
+
+                TeamRequirementTemplate template = TeamRequirementTemplate.builder().id(templateId).course(course).build();
+                Post reloaded = Post.builder()
+                                .id(postId)
+                                .course(course)
+                                .author(buildUser())
+                                .title("Task 1")
+                                .content("Solve")
+                                .type(PostType.TASK)
+                                .teamRequirementTemplate(template)
+                                .files(new ArrayList<>())
+                                .comments(new ArrayList<>())
+                                .createdAt(Instant.now())
+                                .updatedAt(Instant.now())
+                                .build();
+                when(postRepository.findById(postId)).thenReturn(Optional.of(reloaded));
+
+                PostDto result = postService.createPost(courseId, request, userId);
+
+                assertThat(result.getTeamRequirementTemplateId()).isEqualTo(templateId);
+                verify(teamRequirementTemplateService).applyTemplate(eq(courseId), eq(templateId), any(), eq(userId));
+        }
 
     @Test
     void createPost_throwsForbiddenWhenStudent() {

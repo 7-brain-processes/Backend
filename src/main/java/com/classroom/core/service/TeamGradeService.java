@@ -31,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -157,7 +158,7 @@ public class TeamGradeService {
                         .build());
 
         grade.setDistributionMode(request.getDistributionMode());
-        TeamGrade saved = teamGradeRepository.save(grade);
+        TeamGrade saved = teamGradeRepository.saveAndFlush(grade);
 
        teamGradeVoteRepository.deleteByTeamGradeId(saved.getId());
 
@@ -182,6 +183,25 @@ public class TeamGradeService {
 
         boolean needsRecompute = existingByStudent.size() != members.size()
                 || members.stream().anyMatch(member -> !existingByStudent.containsKey(member.getUser().getId()));
+
+        if (!needsRecompute && !existingByStudent.isEmpty()) {
+            List<TeamStudentGrade> existingEntries = new ArrayList<>(existingByStudent.values());
+            if (grade.getGrade() == null) {
+            needsRecompute = existingEntries.stream().anyMatch(entry -> entry.getGrade() != null);
+            } else {
+            long gradedEntriesCount = existingEntries.stream()
+                .filter(entry -> entry.getGrade() != null)
+                .count();
+            int persistedTotal = existingEntries.stream()
+                .map(TeamStudentGrade::getGrade)
+                .filter(Objects::nonNull)
+                .mapToInt(Integer::intValue)
+                .sum();
+
+            needsRecompute = gradedEntriesCount != members.size()
+                || persistedTotal != grade.getGrade();
+            }
+        }
 
         if (!needsRecompute && !forceRecompute) {
             return;
