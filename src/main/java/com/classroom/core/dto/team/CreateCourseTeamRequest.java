@@ -1,6 +1,7 @@
 package com.classroom.core.dto.team;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
@@ -18,4 +19,9 @@ public class CreateCourseTeamRequest {
     private List<UUID> memberIds = new ArrayList<>();
 
     private List<UUID> categoryIds = new ArrayList<>();
+
+    @Positive
+    private Integer maxSize;
+
+    private Boolean selfEnrollmentEnabled;
 }

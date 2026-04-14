@@ -14,7 +14,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -22,7 +21,6 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -106,12 +104,43 @@ class TeamInvitationServiceTest {
                 .thenReturn(Optional.of(studentMember));
         when(courseTeamRepository.existsByPostIdAndMemberUserId(postId, studentId)).thenReturn(false);
         when(invitationRepository.findByCaptainIdAndStudentIdAndPostId(captainId, studentId, postId))
-                .thenReturn(Optional.of(TeamInvitation.builder().build()));
+                .thenReturn(Optional.of(TeamInvitation.builder()
+                        .status(TeamInvitation.InvitationStatus.PENDING)
+                        .build()));
 
         assertThatThrownBy(() -> service.sendInvitation(courseId, postId,
                 SendInvitationRequest.builder().studentId(studentId).build(), captainId))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessage("Invitation already exists");
+    }
+
+    @Test
+    void sendInvitation_declinedInvitation_reopensInvitation() {
+        TeamInvitation declinedInvitation = TeamInvitation.builder()
+                .id(UUID.randomUUID())
+                .captain(captainUser)
+                .student(studentUser)
+                .post(post)
+                .status(TeamInvitation.InvitationStatus.DECLINED)
+                .build();
+
+        when(postCaptainRepository.existsByPostIdAndUserId(postId, captainId)).thenReturn(true);
+        when(postRepository.findById(postId)).thenReturn(Optional.of(post));
+        when(courseMemberRepository.findByCourseIdAndUserId(courseId, studentId))
+                .thenReturn(Optional.of(studentMember));
+        when(courseTeamRepository.existsByPostIdAndMemberUserId(postId, studentId)).thenReturn(false);
+        when(invitationRepository.findByCaptainIdAndStudentIdAndPostId(captainId, studentId, postId))
+                .thenReturn(Optional.of(declinedInvitation));
+        when(invitationRepository.existsByStudentIdAndPostIdAndStatus(studentId, postId,
+                TeamInvitation.InvitationStatus.PENDING)).thenReturn(false);
+        when(templateService.getAppliedTemplate(post)).thenReturn(null);
+        when(invitationRepository.save(any(TeamInvitation.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        TeamInvitationDto result = service.sendInvitation(courseId, postId,
+                SendInvitationRequest.builder().studentId(studentId).build(), captainId);
+
+        assertThat(result.getStatus()).isEqualTo("PENDING");
+        verify(invitationRepository).save(any(TeamInvitation.class));
     }
 
     @Test
@@ -324,11 +353,12 @@ class TeamInvitationServiceTest {
                 .thenReturn(true);
         when(postRepository.findById(postId)).thenReturn(Optional.of(post));
         when(invitationRepository.findById(invitationId)).thenReturn(Optional.of(invitation));
+        when(invitationRepository.save(any(TeamInvitation.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         TeamInvitationDto result = service.respondToInvitation(courseId, postId, invitationId,
                 RespondInvitationRequest.builder().action("decline").build(), studentId);
 
-                verify(invitationRepository).updateStatus(eq(invitationId), eq(TeamInvitation.InvitationStatus.DECLINED), any(Instant.class));
+        verify(invitationRepository).save(any(TeamInvitation.class));
         assertThat(result.getStatus()).isEqualTo("DECLINED");
     }
 

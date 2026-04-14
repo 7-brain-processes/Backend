@@ -6,6 +6,7 @@ import com.classroom.core.dto.auth.RegisterRequest;
 import com.classroom.core.dto.team.AutoFormationStudentDto;
 import com.classroom.core.dto.team.AutoTeamFormationRequest;
 import com.classroom.core.dto.team.AutoTeamFormationResultDto;
+import com.classroom.core.dto.team.SelectCaptainsRequest;
 import com.classroom.core.dto.team.TeamFormationModeDto;
 import com.classroom.core.model.Course;
 import com.classroom.core.model.CourseCategory;
@@ -187,6 +188,15 @@ class TeamFormationControllerIT {
         return new HttpEntity<>(Map.of("mode", mode.name()), headers);
     }
 
+    private HttpEntity<SelectCaptainsRequest> selectCaptainsRequest(String token, boolean reshuffle) {
+        SelectCaptainsRequest request = new SelectCaptainsRequest();
+        request.setReshuffle(reshuffle);
+
+        HttpHeaders headers = bearerHeaders(token);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        return new HttpEntity<>(request, headers);
+    }
+
     @Nested
     class ModeEndpoints {
 
@@ -220,6 +230,48 @@ class TeamFormationControllerIT {
             assertThat(getResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
             assertThat(getResponse.getBody()).isNotNull();
             assertThat(getResponse.getBody().getMode()).isEqualTo(TeamFormationMode.RANDOM_SHUFFLE);
+            assertThat(getResponse.getBody().isCaptain()).isFalse();
+        }
+
+        @Test
+        void getModeIncludesCaptainFlagForSelectedCaptain() {
+            String teacherToken = registerAndGetToken("teacher1", "password123");
+            String studentToken = registerAndGetToken("student1", "password123");
+
+            User teacher = userByUsername("teacher1");
+            User student = userByUsername("student1");
+
+            Course course = createCourseEntity("Java", "Course");
+            addMember(course, teacher, CourseRole.TEACHER);
+            addMember(course, student, CourseRole.STUDENT);
+            Post post = createTaskPost(course, teacher, "Task 1");
+
+            ResponseEntity<TeamFormationModeDto> setResponse = restTemplate.exchange(
+                    "/api/v1/courses/" + course.getId() + "/posts/" + post.getId() + "/team-formation/mode",
+                    HttpMethod.PUT,
+                    modeRequest(teacherToken, TeamFormationMode.CAPTAIN_SELECTION),
+                    TeamFormationModeDto.class
+            );
+            assertThat(setResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+            ResponseEntity<String> selectCaptainsResponse = restTemplate.exchange(
+                    "/api/v1/courses/" + course.getId() + "/posts/" + post.getId() + "/team-formation/captains/select",
+                    HttpMethod.POST,
+                    selectCaptainsRequest(teacherToken, false),
+                    String.class
+            );
+            assertThat(selectCaptainsResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+            ResponseEntity<TeamFormationModeDto> studentModeResponse = restTemplate.exchange(
+                    "/api/v1/courses/" + course.getId() + "/posts/" + post.getId() + "/team-formation/mode",
+                    HttpMethod.GET,
+                    authorizedRequest(studentToken),
+                    TeamFormationModeDto.class
+            );
+            assertThat(studentModeResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(studentModeResponse.getBody()).isNotNull();
+            assertThat(studentModeResponse.getBody().getMode()).isEqualTo(TeamFormationMode.CAPTAIN_SELECTION);
+            assertThat(studentModeResponse.getBody().isCaptain()).isTrue();
         }
     }
 
@@ -263,6 +315,9 @@ class TeamFormationControllerIT {
             assertThat(runResponse.getBody().getFormedTeams()).isEqualTo(2);
             assertThat(runResponse.getBody().getAssignedStudents()).isEqualTo(5);
             assertThat(runResponse.getBody().getUnassignedStudents()).isEqualTo(0);
+            assertThat(runResponse.getBody().getTeams()).isNotNull();
+            assertThat(runResponse.getBody().getTeams()).hasSize(2);
+            assertThat(runResponse.getBody().getTeams().stream().mapToInt(t -> t.getMembersCount()).sum()).isEqualTo(5);
 
             List<CourseTeam> postTeams = courseTeamRepository.findByPostId(post.getId());
             assertThat(postTeams).hasSize(2);
@@ -284,6 +339,8 @@ class TeamFormationControllerIT {
             assertThat(resultResponse.getBody().getFormedTeams()).isEqualTo(2);
             assertThat(resultResponse.getBody().getAssignedStudents()).isEqualTo(5);
             assertThat(resultResponse.getBody().getUnassignedStudents()).isEqualTo(0);
+            assertThat(resultResponse.getBody().getTeams()).isNotNull();
+            assertThat(resultResponse.getBody().getTeams()).hasSize(2);
         }
 
         @Test
@@ -405,5 +462,119 @@ class TeamFormationControllerIT {
             assertThat(reshuffledRun.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
             assertThat(courseTeamRepository.findByPostId(post.getId())).hasSize(2);
         }
+
+        @Test
+        void allowsAutoFormationWithSameTeamNamesAcrossDifferentPosts() {
+            String teacherToken = registerAndGetToken("teacher1", "password123");
+            registerAndGetToken("student1", "password123");
+            registerAndGetToken("student2", "password123");
+            registerAndGetToken("student3", "password123");
+            registerAndGetToken("student4", "password123");
+
+            User teacher = userByUsername("teacher1");
+            User s1 = userByUsername("student1");
+            User s2 = userByUsername("student2");
+            User s3 = userByUsername("student3");
+            User s4 = userByUsername("student4");
+
+            Course course = createCourseEntity("Java", "Course");
+            addMember(course, teacher, CourseRole.TEACHER);
+            addMember(course, s1, CourseRole.STUDENT);
+            addMember(course, s2, CourseRole.STUDENT);
+            addMember(course, s3, CourseRole.STUDENT);
+            addMember(course, s4, CourseRole.STUDENT);
+
+            Post post1 = createTaskPost(course, teacher, "Task 1");
+            Post post2 = createTaskPost(course, teacher, "Task 2");
+
+            ResponseEntity<AutoTeamFormationResultDto> firstRun = restTemplate.exchange(
+                    "/api/v1/courses/" + course.getId() + "/posts/" + post1.getId() + "/team-formation/auto",
+                    HttpMethod.POST,
+                    autoFormationRequest(teacherToken, 2, 2, false, false, false),
+                    AutoTeamFormationResultDto.class
+            );
+            assertThat(firstRun.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+
+            ResponseEntity<AutoTeamFormationResultDto> secondRun = restTemplate.exchange(
+                    "/api/v1/courses/" + course.getId() + "/posts/" + post2.getId() + "/team-formation/auto",
+                    HttpMethod.POST,
+                    autoFormationRequest(teacherToken, 2, 2, false, false, false),
+                    AutoTeamFormationResultDto.class
+            );
+            assertThat(secondRun.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+            assertThat(secondRun.getBody()).isNotNull();
+            assertThat(secondRun.getBody().getFormedTeams()).isEqualTo(2);
+        }
+
+                @Test
+                void rejectsFormationWhenMinMaxConstraintsCannotBeSatisfied() {
+                        String teacherToken = registerAndGetToken("teacher1", "password123");
+                        registerAndGetToken("student1", "password123");
+                        registerAndGetToken("student2", "password123");
+                        registerAndGetToken("student3", "password123");
+
+                        User teacher = userByUsername("teacher1");
+                        User s1 = userByUsername("student1");
+                        User s2 = userByUsername("student2");
+                        User s3 = userByUsername("student3");
+
+                        Course course = createCourseEntity("Java", "Course");
+                        addMember(course, teacher, CourseRole.TEACHER);
+                        addMember(course, s1, CourseRole.STUDENT);
+                        addMember(course, s2, CourseRole.STUDENT);
+                        addMember(course, s3, CourseRole.STUDENT);
+                        Post post = createTaskPost(course, teacher, "Task 1");
+
+                        ResponseEntity<String> response = restTemplate.exchange(
+                                        "/api/v1/courses/" + course.getId() + "/posts/" + post.getId() + "/team-formation/auto",
+                                        HttpMethod.POST,
+                                        autoFormationRequest(teacherToken, 2, 2, false, false, false),
+                                        String.class
+                        );
+
+                        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                }
+
+                @Test
+                void formsTeamsWhenBalanceByRoleEnabled() {
+                        String teacherToken = registerAndGetToken("teacher1", "password123");
+                        registerAndGetToken("student1", "password123");
+                        registerAndGetToken("student2", "password123");
+                        registerAndGetToken("student3", "password123");
+                        registerAndGetToken("student4", "password123");
+
+                        User teacher = userByUsername("teacher1");
+                        User s1 = userByUsername("student1");
+                        User s2 = userByUsername("student2");
+                        User s3 = userByUsername("student3");
+                        User s4 = userByUsername("student4");
+
+                        Course course = createCourseEntity("Java", "Course");
+                        addMember(course, teacher, CourseRole.TEACHER);
+                        addMember(course, s1, CourseRole.STUDENT);
+                        addMember(course, s2, CourseRole.STUDENT);
+                        addMember(course, s3, CourseRole.STUDENT);
+                        addMember(course, s4, CourseRole.STUDENT);
+                        Post post = createTaskPost(course, teacher, "Task 1");
+
+                        ResponseEntity<AutoTeamFormationResultDto> response = restTemplate.exchange(
+                                        "/api/v1/courses/" + course.getId() + "/posts/" + post.getId() + "/team-formation/auto",
+                                        HttpMethod.POST,
+                                        autoFormationRequest(teacherToken, 2, 2, false, true, false),
+                                        AutoTeamFormationResultDto.class
+                        );
+
+                        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+                        assertThat(response.getBody()).isNotNull();
+                        assertThat(response.getBody().getFormedTeams()).isEqualTo(2);
+                        assertThat(response.getBody().getAssignedStudents()).isEqualTo(4);
+
+                        List<CourseTeam> teams = courseTeamRepository.findByPostId(post.getId());
+                        assertThat(teams).hasSize(2);
+                        assertThat(teams.stream()
+                                        .map(team -> courseMemberRepository.countByTeamId(team.getId()))
+                                        .toList())
+                                        .allMatch(size -> size == 2);
+                }
     }
 }

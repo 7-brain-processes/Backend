@@ -245,11 +245,84 @@ class TeamRequirementTemplateControllerIT {
 
             assertThat(applyResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
             assertThat(applyResponse.getBody()).isNotNull();
+                assertThat(applyResponse.getBody().getAppliedMode()).isEqualTo(TeamFormationMode.DRAFT);
+
+                Post refreshedPost = postRepository.findById(post.getId()).orElseThrow();
+                assertThat(refreshedPost.getTeamFormationMode()).isEqualTo(TeamFormationMode.DRAFT);
+                assertThat(refreshedPost.getTeamRequirementTemplate()).isNotNull();
+                assertThat(refreshedPost.getTeamRequirementTemplate().getId()).isEqualTo(createResponse.getBody().getId());
 
             CourseTeam refreshedTeam = courseTeamRepository.findByIdWithCategories(team.getId()).orElseThrow();
             assertThat(refreshedTeam.getMaxSize()).isEqualTo(2);
             assertThat(refreshedTeam.getCategories()).extracting(CourseCategory::getId).containsExactly(categoryA.getId());
         }
+
+            @Test
+            void rejectsTemplateCreationWhenMinGreaterThanMax() {
+                String teacherToken = registerAndGetToken("teacher1", "password123");
+                User teacher = userByUsername("teacher1");
+
+                Course course = createCourseEntity("Java", "Course");
+                addMember(course, teacher, CourseRole.TEACHER);
+                CourseCategory categoryA = createCategory(course, "A");
+
+                ResponseEntity<String> createResponse = restTemplate.exchange(
+                    "/api/v1/courses/" + course.getId() + "/team-requirement-templates",
+                    HttpMethod.POST,
+                    createTemplateRequest(teacherToken, "Invalid Template", 4, 2, categoryA.getId().toString()),
+                    String.class
+                );
+
+                assertThat(createResponse.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            }
+
+            @Test
+            void rejectsIncompatibleTemplateWhenExistingTeamExceedsMaxSize() {
+                String teacherToken = registerAndGetToken("teacher1", "password123");
+                registerAndGetToken("student1", "password123");
+                registerAndGetToken("student2", "password123");
+                registerAndGetToken("student3", "password123");
+
+                User teacher = userByUsername("teacher1");
+                User student1 = userByUsername("student1");
+                User student2 = userByUsername("student2");
+                User student3 = userByUsername("student3");
+
+                Course course = createCourseEntity("Java", "Course");
+                addMember(course, teacher, CourseRole.TEACHER);
+                CourseMember m1 = addMember(course, student1, CourseRole.STUDENT);
+                CourseMember m2 = addMember(course, student2, CourseRole.STUDENT);
+                CourseMember m3 = addMember(course, student3, CourseRole.STUDENT);
+
+                CourseCategory categoryA = createCategory(course, "A");
+                m1.setCategory(categoryA);
+                m2.setCategory(categoryA);
+                m3.setCategory(categoryA);
+
+                Post post = createTaskPost(course, teacher, "Task 1");
+                CourseTeam team = createPostTeam(course, post, "Team A");
+                m1.setTeam(team);
+                m2.setTeam(team);
+                m3.setTeam(team);
+                courseMemberRepository.saveAll(List.of(m1, m2, m3));
+
+                ResponseEntity<TeamRequirementTemplateDto> createResponse = restTemplate.exchange(
+                    "/api/v1/courses/" + course.getId() + "/team-requirement-templates",
+                    HttpMethod.POST,
+                    createTemplateRequest(teacherToken, "Template Max 2", 1, 2, categoryA.getId().toString()),
+                    TeamRequirementTemplateDto.class
+                );
+                assertThat(createResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+
+                ResponseEntity<String> applyResponse = restTemplate.exchange(
+                    "/api/v1/courses/" + course.getId() + "/team-requirement-templates/" + createResponse.getBody().getId() + "/apply",
+                    HttpMethod.POST,
+                    applyTemplateRequest(teacherToken, post.getId().toString()),
+                    String.class
+                );
+
+                assertThat(applyResponse.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            }
 
         @Test
         void rejectsIncompatibleTemplateWhenRequiredCategoryHasNoStudents() {

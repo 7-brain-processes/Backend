@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.time.Instant;
+import java.util.List;
 
 @Data
 @Builder
@@ -14,4 +15,5 @@ public class AutoTeamFormationResultDto {
     private int assignedStudents;
     private int unassignedStudents;
     private Instant generatedAt;
+    private List<CourseTeamDto> teams;
 }

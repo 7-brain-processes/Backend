@@ -486,9 +486,43 @@ paths:
       - $ref: "#/components/parameters/CourseId"
       - $ref: "#/components/parameters/PostId"
 
+    post:
+      tags: [Teams]
+      summary: Create a team for an assignment (teacher only)
+      operationId: createPostTeam
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCourseTeamRequest"
+      responses:
+        "201":
+          description: Team created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CourseTeamDto"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
     get:
       tags: [Teams]
-      summary: List available teams for self-enrollment in an assignment
+      summary: List teams for an assignment with availability status
       operationId: listTeamsForEnrollment
       responses:
         "200":
@@ -859,13 +893,11 @@ paths:
       operationId: getCaptainTeam
       responses:
         "200":
-          description: Captain's current team members
+          description: Captain's current team
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/AvailableStudentDto"
+                $ref: "#/components/schemas/StudentTeamDto"
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
@@ -2340,6 +2372,8 @@ components:
           type: string
         displayName:
           type: string
+        role:
+          $ref: "#/components/schemas/CourseRole"
         category:
           $ref: "#/components/schemas/CourseCategoryDto"
 
@@ -2519,6 +2553,18 @@ components:
           items:
             type: string
             format: uuid
+        categoryIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        maxSize:
+          type: integer
+          minimum: 1
+          nullable: true
+        selfEnrollmentEnabled:
+          type: boolean
+          nullable: true
 
     CourseTeamMemberDto:
       type: object
@@ -2641,6 +2687,8 @@ components:
       properties:
         mode:
           $ref: "#/components/schemas/TeamFormationMode"
+        isCaptain:
+          type: boolean
 
     SetTeamFormationModeRequest:
       type: object
@@ -2680,6 +2728,10 @@ components:
         generatedAt:
           type: string
           format: date-time
+        teams:
+          type: array
+          items:
+            $ref: "#/components/schemas/CourseTeamDto"
 
     AutoFormationStudentDto:
       type: object
