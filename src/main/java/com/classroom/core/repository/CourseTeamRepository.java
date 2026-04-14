@@ -19,6 +19,8 @@ public interface CourseTeamRepository extends JpaRepository<CourseTeam, UUID> {
 
     List<CourseTeam> findByPostIdAndSelfEnrollmentEnabledOrderByCreatedAtAsc(UUID postId, boolean enabled);
 
+    List<CourseTeam> findByPostIdOrderByCreatedAtAsc(UUID postId);
+
     Optional<CourseTeam> findByPostIdAndId(UUID postId, UUID teamId);
 
     List<CourseTeam> findByPostId(UUID postId);
