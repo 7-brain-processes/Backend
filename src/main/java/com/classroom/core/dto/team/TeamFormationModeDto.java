@@ -10,4 +10,5 @@ import lombok.Data;
 @AllArgsConstructor
 public class TeamFormationModeDto {
     private TeamFormationMode mode;
+    private boolean isCaptain;
 }

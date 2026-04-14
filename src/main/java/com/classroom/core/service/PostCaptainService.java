@@ -44,6 +44,12 @@ public class PostCaptainService {
                 .collect(Collectors.toList());
     }
 
+    public boolean isCaptain(UUID courseId, UUID postId, UUID currentUserId) {
+        ensureCourseMember(courseId, currentUserId);
+        requireTaskPostInCourse(courseId, postId);
+        return postCaptainRepository.existsByPostIdAndUserId(postId, currentUserId);
+    }
+
     @Transactional
     public SelectCaptainsResultDto selectCaptains(UUID courseId, UUID postId, SelectCaptainsRequest request, UUID currentUserId) {
         Post post = getPostOrThrow(courseId, postId);

@@ -1,9 +1,12 @@
 package com.classroom.core.service;
 
+import com.classroom.core.dto.auth.UserDto;
 import com.classroom.core.dto.course.CourseCategoryDto;
 import com.classroom.core.dto.team.AutoFormationStudentDto;
 import com.classroom.core.dto.team.AutoTeamFormationRequest;
 import com.classroom.core.dto.team.AutoTeamFormationResultDto;
+import com.classroom.core.dto.team.CourseTeamDto;
+import com.classroom.core.dto.team.CourseTeamMemberDto;
 import com.classroom.core.exception.BadRequestException;
 import com.classroom.core.exception.ForbiddenException;
 import com.classroom.core.exception.ResourceNotFoundException;
@@ -122,6 +125,7 @@ public class TeamFormationService {
         }
 
         int formedTeams = 0;
+        List<CourseTeamDto> teamDtos = new ArrayList<>();
         for (int i = 0; i < buckets.size(); i++) {
             List<CourseMember> teamMembers = buckets.get(i);
             if (teamMembers.isEmpty()) {
@@ -141,6 +145,7 @@ public class TeamFormationService {
                 member.setTeam(team);
             }
             courseMemberRepository.saveAll(teamMembers);
+            teamDtos.add(toTeamDto(team, teamMembers));
             formedTeams++;
         }
 
@@ -149,6 +154,7 @@ public class TeamFormationService {
                 .assignedStudents(students.size())
                 .unassignedStudents(0)
                 .generatedAt(Instant.now())
+                .teams(teamDtos)
                 .build();
     }
 
@@ -158,9 +164,16 @@ public class TeamFormationService {
         ensureTeacher(courseId, currentUserId);
         requireTaskPostInCourse(courseId, postId);
 
-        List<CourseTeam> teams = courseTeamRepository.findByPostId(postId);
-        int assignedStudents = teams.stream()
-                .mapToInt(team -> courseMemberRepository.countByTeamId(team.getId()))
+        List<CourseTeam> teams = courseTeamRepository.findByPostIdOrderByCreatedAtAsc(postId);
+        List<CourseTeamDto> teamDtos = teams.stream()
+                .map(team -> {
+                    List<CourseMember> members = courseMemberRepository
+                            .findByCourseIdAndTeamIdOrderByJoinedAtAsc(courseId, team.getId());
+                    return toTeamDto(team, members);
+                })
+                .toList();
+        int assignedStudents = teamDtos.stream()
+                .mapToInt(CourseTeamDto::getMembersCount)
                 .sum();
 
         int allStudents = courseMemberRepository
@@ -177,6 +190,7 @@ public class TeamFormationService {
                 .assignedStudents(assignedStudents)
                 .unassignedStudents(Math.max(allStudents - assignedStudents, 0))
                 .generatedAt(generatedAt)
+                .teams(teamDtos)
                 .build();
     }
 
@@ -282,6 +296,37 @@ public class TeamFormationService {
                 .description(category.getDescription())
                 .active(category.isActive())
                 .createdAt(category.getCreatedAt())
+                .build();
+    }
+
+    private CourseTeamDto toTeamDto(CourseTeam team, List<CourseMember> members) {
+        List<CourseTeamMemberDto> memberDtos = members.stream()
+                .map(this::toMemberDto)
+                .toList();
+
+        List<CourseCategoryDto> categories = team.getCategories().stream()
+                .map(this::toCategoryDto)
+                .toList();
+
+        return CourseTeamDto.builder()
+                .id(team.getId())
+                .name(team.getName())
+                .createdAt(team.getCreatedAt())
+                .membersCount(memberDtos.size())
+                .members(memberDtos)
+                .maxSize(team.getMaxSize())
+                .selfEnrollmentEnabled(team.isSelfEnrollmentEnabled())
+                .isFull(team.getMaxSize() != null && memberDtos.size() >= team.getMaxSize())
+                .categories(categories)
+                .categoryId(categories.isEmpty() ? null : categories.get(0).getId())
+                .categoryTitle(categories.isEmpty() ? null : categories.get(0).getTitle())
+                .build();
+    }
+
+    private CourseTeamMemberDto toMemberDto(CourseMember member) {
+        return CourseTeamMemberDto.builder()
+                .user(UserDto.from(member.getUser()))
+                .category(toCategoryDto(member.getCategory()))
                 .build();
     }
 }

@@ -1,9 +1,12 @@
 package com.classroom.core.service;
 
+import com.classroom.core.dto.auth.UserDto;
 import com.classroom.core.dto.course.CourseCategoryDto;
 import com.classroom.core.dto.team.AvailableStudentDto;
+import com.classroom.core.dto.team.CourseTeamMemberDto;
 import com.classroom.core.dto.team.RespondInvitationRequest;
 import com.classroom.core.dto.team.SendInvitationRequest;
+import com.classroom.core.dto.team.StudentTeamDto;
 import com.classroom.core.dto.team.TeamInvitationDto;
 import com.classroom.core.exception.BadRequestException;
 import com.classroom.core.exception.ForbiddenException;
@@ -41,6 +44,7 @@ public class TeamInvitationService {
         TeamRequirementTemplate template = templateService.getAppliedTemplate(post);
 
         return students.stream()
+                .filter(student -> !postCaptainRepository.existsByPostIdAndUserId(postId, student.getUser().getId()))
                 .filter(student -> !isStudentInAnyTeam(postId, student.getUser().getId()))
                 .filter(student -> !hasPendingInvitationFromThisCaptain(captainId, student.getUser().getId(), postId))
                 .filter(student -> template == null || matchesTemplateRequirements(student, template))
@@ -64,8 +68,20 @@ public class TeamInvitationService {
             throw new BadRequestException("Student is already in a team for this post");
         }
 
-        if (invitationRepository.findByCaptainIdAndStudentIdAndPostId(captainId, studentId, postId).isPresent()) {
+        if (postCaptainRepository.existsByPostIdAndUserId(postId, studentId)) {
+            throw new BadRequestException("Cannot invite another captain");
+        }
+
+        TeamInvitation existingInvitation = invitationRepository
+                .findByCaptainIdAndStudentIdAndPostId(captainId, studentId, postId)
+                .orElse(null);
+
+        if (existingInvitation != null && existingInvitation.getStatus() == TeamInvitation.InvitationStatus.PENDING) {
             throw new BadRequestException("Invitation already exists");
+        }
+
+        if (existingInvitation != null && existingInvitation.getStatus() == TeamInvitation.InvitationStatus.ACCEPTED) {
+            throw new BadRequestException("Invitation is already accepted");
         }
 
         if (invitationRepository.existsByStudentIdAndPostIdAndStatus(studentId, postId, TeamInvitation.InvitationStatus.PENDING)) {
@@ -75,6 +91,13 @@ public class TeamInvitationService {
         TeamRequirementTemplate template = templateService.getAppliedTemplate(post);
         if (template != null) {
             validateInvitationAgainstTemplate(student, template, captainId, postId);
+        }
+
+        if (existingInvitation != null && existingInvitation.getStatus() == TeamInvitation.InvitationStatus.DECLINED) {
+            existingInvitation.setStatus(TeamInvitation.InvitationStatus.PENDING);
+            existingInvitation.setRespondedAt(null);
+            TeamInvitation reopened = invitationRepository.save(existingInvitation);
+            return toDto(reopened);
         }
 
         TeamInvitation invitation = TeamInvitation.builder()
@@ -97,15 +120,26 @@ public class TeamInvitationService {
                 .collect(Collectors.toList());
     }
 
-    public List<AvailableStudentDto> getCaptainTeam(UUID courseId, UUID postId, UUID captainId) {
+    public StudentTeamDto getCaptainTeam(UUID courseId, UUID postId, UUID captainId) {
         ensureIsCaptain(courseId, postId, captainId);
 
-        return courseTeamRepository.findByPostIdAndCaptainId(postId, captainId)
-                .map(team -> courseMemberRepository.findByCourseIdAndTeamIdOrderByJoinedAtAsc(courseId, team.getId())
-                        .stream()
-                        .map(this::toAvailableStudentDto)
-                        .collect(Collectors.toList()))
-                .orElse(List.of());
+        CourseTeam team = courseTeamRepository.findByPostIdAndCaptainId(postId, captainId)
+                .orElseThrow(() -> new ResourceNotFoundException("Captain team not found"));
+
+        List<CourseTeamMemberDto> members = courseMemberRepository
+                .findByCourseIdAndTeamIdOrderByJoinedAtAsc(courseId, team.getId())
+                .stream()
+                .map(this::toTeamMemberDto)
+                .toList();
+
+        return StudentTeamDto.builder()
+                .teamId(team.getId())
+                .teamName(team.getName())
+                .membersCount(members.size())
+                .maxSize(team.getMaxSize())
+                .members(members)
+                .joinedAt(team.getCreatedAt())
+                .build();
     }
 
     public List<TeamInvitationDto> getStudentInvitations(UUID courseId, UUID postId, UUID studentId) {
@@ -132,20 +166,43 @@ public class TeamInvitationService {
         }
 
         TeamInvitation.InvitationStatus newStatus;
+        Instant respondedAt = Instant.now();
         if ("accept".equals(request.getAction())) {
+            if (isStudentInAnyTeam(postId, studentId)) {
+                throw new BadRequestException("Student is already in a team for this post");
+            }
             newStatus = TeamInvitation.InvitationStatus.ACCEPTED;
             createOrUpdateTeam(invitation);
+            declineOtherPendingInvitations(studentId, postId, invitationId, respondedAt);
         } else if ("decline".equals(request.getAction())) {
             newStatus = TeamInvitation.InvitationStatus.DECLINED;
         } else {
             throw new BadRequestException("Invalid action");
         }
 
-        Instant respondedAt = Instant.now();
-        invitationRepository.updateStatus(invitationId, newStatus, respondedAt);
         invitation.setStatus(newStatus);
         invitation.setRespondedAt(respondedAt);
-        return toDto(invitation);
+        TeamInvitation saved = invitationRepository.save(invitation);
+        return toDto(saved);
+    }
+
+    private void declineOtherPendingInvitations(UUID studentId,
+                                                UUID postId,
+                                                UUID acceptedInvitationId,
+                                                Instant respondedAt) {
+        List<TeamInvitation> invitations = invitationRepository.findByStudentIdAndPostId(studentId, postId);
+        List<TeamInvitation> toDecline = invitations.stream()
+                .filter(inv -> !inv.getId().equals(acceptedInvitationId))
+                .filter(inv -> inv.getStatus() == TeamInvitation.InvitationStatus.PENDING)
+                .peek(inv -> {
+                    inv.setStatus(TeamInvitation.InvitationStatus.DECLINED);
+                    inv.setRespondedAt(respondedAt);
+                })
+                .toList();
+
+        if (!toDecline.isEmpty()) {
+            invitationRepository.saveAll(toDecline);
+        }
     }
 
     private void createOrUpdateTeam(TeamInvitation invitation) {
@@ -248,6 +305,14 @@ public class TeamInvitationService {
                 .userId(member.getUser().getId())
                 .username(member.getUser().getUsername())
                 .displayName(member.getUser().getDisplayName())
+                .role(member.getRole())
+                .category(member.getCategory() != null ? toCategoryDto(member.getCategory()) : null)
+                .build();
+    }
+
+    private CourseTeamMemberDto toTeamMemberDto(CourseMember member) {
+        return CourseTeamMemberDto.builder()
+                .user(UserDto.from(member.getUser()))
                 .category(member.getCategory() != null ? toCategoryDto(member.getCategory()) : null)
                 .build();
     }

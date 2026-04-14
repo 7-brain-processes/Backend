@@ -82,6 +82,34 @@ public class CourseTeamController {
     }
 
 
+    @PostMapping("/posts/{postId}/teams")
+    @Operation(
+            summary = "Create a team for an assignment (teacher only)",
+            operationId = "createPostTeam",
+            security = @SecurityRequirement(name = "bearerAuth"),
+            responses = {
+                    @ApiResponse(responseCode = "201", description = "Team created",
+                            content = @Content(schema = @Schema(implementation = CourseTeamDto.class))),
+                    @ApiResponse(responseCode = "400", description = "Invalid request",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "403", description = "Insufficient permissions",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "404", description = "Resource not found",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "409", description = "Conflict",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            }
+    )
+    public ResponseEntity<CourseTeamDto> createTeamForPost(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable UUID courseId,
+            @PathVariable UUID postId,
+            @Valid @RequestBody CreateCourseTeamRequest request) {
+
+        CourseTeamDto result = courseTeamService.createTeamForPost(courseId, postId, request, principal.getId());
+        return ResponseEntity.status(HttpStatus.CREATED).body(result);
+    }
+
     @GetMapping("/posts/{postId}/teams")
     @Operation(
             summary = "List available teams for self-enrollment in an assignment",

@@ -108,20 +108,20 @@ public class TeamInvitationController {
             operationId = "getCaptainTeam",
             security = @SecurityRequirement(name = "bearerAuth"),
             responses = {
-                    @ApiResponse(responseCode = "200", description = "Captain's current team members",
-                            content = @Content(schema = @Schema(implementation = AvailableStudentDto.class))),
+                    @ApiResponse(responseCode = "200", description = "Captain's current team",
+                            content = @Content(schema = @Schema(implementation = StudentTeamDto.class))),
                     @ApiResponse(responseCode = "403", description = "Insufficient permissions",
                             content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
                     @ApiResponse(responseCode = "404", description = "Resource not found",
                             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
             }
     )
-    public ResponseEntity<List<AvailableStudentDto>> getCaptainTeam(
+    public ResponseEntity<StudentTeamDto> getCaptainTeam(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable UUID courseId,
             @PathVariable UUID postId) {
 
-        List<AvailableStudentDto> result = teamInvitationService
+        StudentTeamDto result = teamInvitationService
                 .getCaptainTeam(courseId, postId, principal.getId());
         return ResponseEntity.ok(result);
     }
