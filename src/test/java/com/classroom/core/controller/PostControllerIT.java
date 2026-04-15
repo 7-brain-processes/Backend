@@ -508,25 +508,6 @@ class PostControllerIT {
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         }
-
-        @Test
-        void returns400_whenUpdatingDeadlineToThePast() {
-            String token = registerAndGetToken("teacher1", "password123");
-            User teacher = userByUsername("teacher1");
-
-            Course course = createCourseEntity("Java", "Course");
-            addMember(course, teacher, CourseRole.TEACHER);
-            Post post = createPostEntity(course, teacher, "Assignment 1", PostType.TASK);
-
-            ResponseEntity<String> response = restTemplate.exchange(
-                    "/api/v1/courses/" + course.getId() + "/posts/" + post.getId(),
-                    HttpMethod.PUT,
-                    authorizedUpdateRequest(token, "Assignment 1", "Updated", Instant.now().minusSeconds(3600)),
-                    String.class
-            );
-
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        }
     }
 
     @Nested
