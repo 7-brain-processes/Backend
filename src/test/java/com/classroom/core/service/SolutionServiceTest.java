@@ -427,4 +427,39 @@ class SolutionServiceTest {
         assertThatThrownBy(() -> solutionService.gradeSolution(courseId, postId, solutionId, request, teacherId))
                 .isInstanceOf(ResourceNotFoundException.class);
     }
+
+    @Test
+    void removeGrade_clearsGradeWhenTeacher() {
+        Course course = buildCourse();
+        CourseMember teacher = buildMember(course, teacherId, CourseRole.TEACHER);
+        Post task = buildTaskPost(course);
+        Solution solution = buildSolution(task);
+        solution.setGrade(85);
+        solution.setStatus(SolutionStatus.GRADED);
+        solution.setGradedAt(Instant.now());
+
+        when(courseMemberRepository.findByCourseIdAndUserId(courseId, teacherId))
+                .thenReturn(Optional.of(teacher));
+        when(postRepository.findById(postId)).thenReturn(Optional.of(task));
+        when(solutionRepository.findById(solutionId)).thenReturn(Optional.of(solution));
+        when(solutionRepository.save(any(Solution.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        SolutionDto result = solutionService.removeGrade(courseId, postId, solutionId, teacherId);
+
+        assertThat(result.getGrade()).isNull();
+        assertThat(result.getStatus()).isEqualTo(SolutionStatus.SUBMITTED);
+        assertThat(result.getGradedAt()).isNull();
+    }
+
+    @Test
+    void removeGrade_throwsForbiddenWhenStudent() {
+        Course course = buildCourse();
+        CourseMember student = buildMember(course, studentId, CourseRole.STUDENT);
+
+        when(courseMemberRepository.findByCourseIdAndUserId(courseId, studentId))
+                .thenReturn(Optional.of(student));
+
+        assertThatThrownBy(() -> solutionService.removeGrade(courseId, postId, solutionId, studentId))
+                .isInstanceOf(ForbiddenException.class);
+    }
 }

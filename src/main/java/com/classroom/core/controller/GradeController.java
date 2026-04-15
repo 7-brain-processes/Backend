@@ -58,6 +58,29 @@ public class GradeController {
         return ResponseEntity.ok(result);
     }
 
+    @DeleteMapping("/grade")
+    @Operation(
+            summary = "Remove a grade from a solution (teacher only)",
+            operationId = "removeGrade",
+            security = @SecurityRequirement(name = "bearerAuth"),
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Grade removed",
+                            content = @Content(schema = @Schema(implementation = SolutionDto.class))),
+                    @ApiResponse(responseCode = "403", description = "Insufficient permissions",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "404", description = "Resource not found",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            }
+    )
+    public ResponseEntity<SolutionDto> removeGrade(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable UUID courseId,
+            @PathVariable UUID postId,
+            @PathVariable UUID solutionId) {
+        SolutionDto result = solutionService.removeGrade(courseId, postId, solutionId, principal.getId());
+        return ResponseEntity.ok(result);
+    }
+
     @GetMapping("/comments")
     @Operation(
             summary = "List teacher comments on a solution",

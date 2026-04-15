@@ -35,7 +35,6 @@ services:
       STORAGE_PATH: /app/uploads
       MAX_FILE_SIZE: ${MAX_FILE_SIZE}
       MAX_REQUEST_SIZE: ${MAX_REQUEST_SIZE}
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
     volumes:
       - uploads:/app/uploads
 

@@ -9,6 +9,7 @@ import com.classroom.core.model.PostFile;
 import com.classroom.core.repository.CourseMemberRepository;
 import com.classroom.core.repository.PostFileRepository;
 import com.classroom.core.repository.PostRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +17,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.net.MalformedURLException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
@@ -30,6 +33,9 @@ public class PostMaterialService {
     private final PostFileRepository postFileRepository;
     private final PostRepository postRepository;
     private final CourseMemberRepository courseMemberRepository;
+
+    @Value("${app.storage.path}")
+    private String storagePath;
 
     public List<FileDto> listPostMaterials(UUID courseId, UUID postId, UUID userId) {
         requireMember(courseId, userId);
@@ -48,12 +54,20 @@ public class PostMaterialService {
         }
         var post = postRepository.findById(postId)
                 .orElseThrow(() -> new ResourceNotFoundException("Post not found"));
+        String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
+        Path target = Path.of(storagePath).resolve(fileName);
+        try {
+            Files.createDirectories(target.getParent());
+            file.transferTo(target);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to store file", e);
+        }
         PostFile postFile = PostFile.builder()
                 .post(post)
                 .originalName(file.getOriginalFilename())
                 .contentType(file.getContentType())
                 .sizeBytes(file.getSize())
-                .storagePath("/uploads/" + UUID.randomUUID() + "_" + file.getOriginalFilename())
+                .storagePath(target.toString())
                 .build();
         return FileDto.from(postFileRepository.save(postFile));
     }
@@ -78,7 +92,11 @@ public class PostMaterialService {
         PostFile file = postFileRepository.findById(fileId)
                 .orElseThrow(() -> new ResourceNotFoundException("File not found"));
         try {
-            return new UrlResource(Path.of(file.getStoragePath()).toUri());
+            Resource resource = new UrlResource(Path.of(file.getStoragePath()).toUri());
+            if (!resource.exists()) {
+                throw new ResourceNotFoundException("File not found on disk");
+            }
+            return resource;
         } catch (MalformedURLException e) {
             throw new ResourceNotFoundException("File not accessible");
         }

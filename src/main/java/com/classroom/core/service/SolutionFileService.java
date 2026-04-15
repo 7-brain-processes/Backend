@@ -8,6 +8,7 @@ import com.classroom.core.model.SolutionFile;
 import com.classroom.core.repository.CourseMemberRepository;
 import com.classroom.core.repository.SolutionFileRepository;
 import com.classroom.core.repository.SolutionRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import lombok.RequiredArgsConstructor;
@@ -15,7 +16,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.net.MalformedURLException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
@@ -29,6 +32,9 @@ public class SolutionFileService {
     private final SolutionFileRepository solutionFileRepository;
     private final SolutionRepository solutionRepository;
     private final CourseMemberRepository courseMemberRepository;
+
+    @Value("${app.storage.path}")
+    private String storagePath;
 
     public List<FileDto> listSolutionFiles(UUID courseId, UUID postId, UUID solutionId, UUID userId) {
         requireMember(courseId, userId);
@@ -45,12 +51,20 @@ public class SolutionFileService {
         requireMember(courseId, userId);
         var solution = solutionRepository.findById(solutionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Solution not found"));
+        String fileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
+        Path target = Path.of(storagePath).resolve(fileName);
+        try {
+            Files.createDirectories(target.getParent());
+            file.transferTo(target);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to store file", e);
+        }
         SolutionFile solutionFile = SolutionFile.builder()
                 .solution(solution)
                 .originalName(file.getOriginalFilename())
                 .contentType(file.getContentType())
                 .sizeBytes(file.getSize())
-                .storagePath("/uploads/" + UUID.randomUUID() + "_" + file.getOriginalFilename())
+                .storagePath(target.toString())
                 .build();
         return FileDto.from(solutionFileRepository.save(solutionFile));
     }
@@ -74,7 +88,11 @@ public class SolutionFileService {
         SolutionFile file = solutionFileRepository.findById(fileId)
                 .orElseThrow(() -> new ResourceNotFoundException("File not found"));
         try {
-            return new UrlResource(Path.of(file.getStoragePath()).toUri());
+            Resource resource = new UrlResource(Path.of(file.getStoragePath()).toUri());
+            if (!resource.exists()) {
+                throw new ResourceNotFoundException("File not found on disk");
+            }
+            return resource;
         } catch (MalformedURLException e) {
             throw new ResourceNotFoundException("File not accessible");
         }
