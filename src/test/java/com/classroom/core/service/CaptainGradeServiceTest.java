@@ -127,6 +127,20 @@ class CaptainGradeServiceTest {
                 .hasMessage("Team grade has not been set yet");
     }
 
+    @Test
+    void getDistributionForm_gradeValueNull_throwsBadRequest() {
+        teamGrade.setGrade(null);
+
+        when(postCaptainRepository.existsByPostIdAndUserId(postId, captainId)).thenReturn(true);
+        when(postRepository.findById(postId)).thenReturn(Optional.of(post));
+        when(courseTeamRepository.findByPostIdAndCaptainId(postId, captainId)).thenReturn(Optional.of(team));
+        when(teamGradeRepository.findByPostIdAndTeamId(postId, teamId)).thenReturn(Optional.of(teamGrade));
+
+        assertThatThrownBy(() -> captainGradeService.getDistributionForm(courseId, postId, captainId))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Team grade has not been set yet");
+    }
+
    
     @Test
     void saveDistribution_sumMismatch_throwsBadRequest() {
@@ -186,6 +200,16 @@ class CaptainGradeServiceTest {
         assertThat(result.getTeamGrade()).isEqualTo(90);
         assertThat(result.getDistributionMode()).isEqualTo(TeamGradeDistributionMode.CAPTAIN_MANUAL);
         assertThat(result.getStudents()).hasSize(2);
+    }
+
+    @Test
+    void saveDistribution_emptyPayload_throwsBadRequest() {
+        when(postCaptainRepository.existsByPostIdAndUserId(postId, captainId)).thenReturn(true);
+        when(postRepository.findById(postId)).thenReturn(Optional.of(post));
+
+        assertThatThrownBy(() -> captainGradeService.saveDistribution(courseId, postId, new CaptainGradeDistributionRequest(), captainId))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Grade distribution payload must contain grades");
     }
 
     

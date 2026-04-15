@@ -421,4 +421,16 @@ class TeamInvitationServiceTest {
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getCaptainId()).isEqualTo(captainId);
     }
+
+    @Test
+    void getCaptainTeam_whenTeamNotCreated_returnsEmptyTeamDto() {
+        when(postCaptainRepository.existsByPostIdAndUserId(postId, captainId)).thenReturn(true);
+        when(courseTeamRepository.findByPostIdAndCaptainId(postId, captainId)).thenReturn(Optional.empty());
+
+        var result = service.getCaptainTeam(courseId, postId, captainId);
+
+        assertThat(result.getTeamId()).isNull();
+        assertThat(result.getMembersCount()).isZero();
+        assertThat(result.getMembers()).isEmpty();
+    }
 }
