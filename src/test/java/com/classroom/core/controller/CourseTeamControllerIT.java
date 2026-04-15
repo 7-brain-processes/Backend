@@ -112,9 +112,21 @@ class CourseTeamControllerIT {
     }
 
     private HttpEntity<CreateCourseTeamRequest> authorizedCreateRequest(String token, String name, List<UUID> memberIds) {
+        return authorizedCreateRequest(token, name, memberIds, null, null, List.of());
+    }
+
+    private HttpEntity<CreateCourseTeamRequest> authorizedCreateRequest(String token,
+                                                                        String name,
+                                                                        List<UUID> memberIds,
+                                                                        Integer maxSize,
+                                                                        Boolean selfEnrollmentEnabled,
+                                                                        List<UUID> categoryIds) {
         CreateCourseTeamRequest request = new CreateCourseTeamRequest();
         request.setName(name);
         request.setMemberIds(memberIds);
+        request.setMaxSize(maxSize);
+        request.setSelfEnrollmentEnabled(selfEnrollmentEnabled);
+        request.setCategoryIds(categoryIds);
 
         HttpHeaders headers = bearerHeaders(token);
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -307,6 +319,36 @@ class CourseTeamControllerIT {
             );
 
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        }
+
+        @Test
+        void createsAssignmentTeamWithSettingsForTeacher() {
+            String teacherToken = registerAndGetToken("teacher1", "password123");
+            User teacher = userByUsername("teacher1");
+
+            Course course = createCourseEntity("Java", "Course");
+            addMember(course, teacher, CourseRole.TEACHER);
+            Post post = createPost(course, teacher, "Task 1", TeamFormationMode.FREE);
+            CourseCategory category = createCategory(course, "A");
+
+            ResponseEntity<CourseTeamDto> response = restTemplate.exchange(
+                    "/api/v1/courses/" + course.getId() + "/posts/" + post.getId() + "/teams",
+                    HttpMethod.POST,
+                    authorizedCreateRequest(teacherToken, "Team A", List.of(), 3, true, List.of(category.getId())),
+                    CourseTeamDto.class
+            );
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getName()).isEqualTo("Team A");
+            assertThat(response.getBody().getMaxSize()).isEqualTo(3);
+            assertThat(response.getBody().isSelfEnrollmentEnabled()).isTrue();
+            assertThat(response.getBody().getMembersCount()).isEqualTo(0);
+            assertThat(response.getBody().getCategories()).hasSize(1);
+
+            List<CourseTeam> postTeams = courseTeamRepository.findByPostId(post.getId());
+            assertThat(postTeams).hasSize(1);
+            assertThat(postTeams.get(0).getName()).isEqualTo("Team A");
         }
     }
 

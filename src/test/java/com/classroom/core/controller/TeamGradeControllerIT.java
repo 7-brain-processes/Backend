@@ -214,6 +214,18 @@ class TeamGradeControllerIT {
             assertThat(updateResponse.getBody()).isNotNull();
             assertThat(updateResponse.getBody().getGrade()).isEqualTo(92);
             assertThat(updateResponse.getBody().getComment()).isEqualTo("updated");
+
+            ResponseEntity<TeamGradeDto> getResponse = restTemplate.exchange(
+                    base,
+                    HttpMethod.GET,
+                    authorizedRequest(teacherToken),
+                    TeamGradeDto.class
+            );
+
+            assertThat(getResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(getResponse.getBody()).isNotNull();
+            assertThat(getResponse.getBody().getGrade()).isEqualTo(92);
+            assertThat(getResponse.getBody().getComment()).isEqualTo("updated");
         }
     }
 
@@ -264,6 +276,9 @@ class TeamGradeControllerIT {
             assertThat(setMode.getStatusCode()).isEqualTo(HttpStatus.OK);
             assertThat(setMode.getBody()).isNotNull();
             assertThat(setMode.getBody().getStudents()).hasSize(3);
+                assertThat(setMode.getBody().getStudents())
+                    .extracting(student -> student.getGrade())
+                    .containsExactlyInAnyOrder(34, 33, 33);
 
             List<TeamStudentGrade> persisted = teamStudentGradeRepository.findAll();
             assertThat(persisted).hasSize(3);
@@ -333,6 +348,9 @@ class TeamGradeControllerIT {
             assertThat(distributionResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
             assertThat(distributionResponse.getBody()).isNotNull();
             assertThat(distributionResponse.getBody().getStudents()).hasSize(3);
+                assertThat(distributionResponse.getBody().getStudents())
+                    .extracting(student -> student.getGrade())
+                    .containsExactlyInAnyOrder(33, 32, 32);
 
             int recalculatedSum = teamStudentGradeRepository.findAll().stream()
                     .map(TeamStudentGrade::getGrade)

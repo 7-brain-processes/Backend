@@ -18,6 +18,7 @@ import com.classroom.core.model.CourseMember;
 import com.classroom.core.model.CourseRole;
 import com.classroom.core.model.CourseTeam;
 import com.classroom.core.model.Post;
+import com.classroom.core.model.PostType;
 import com.classroom.core.repository.CourseMemberRepository;
 import com.classroom.core.repository.CourseCategoryRepository;
 import com.classroom.core.repository.CourseRepository;
@@ -66,7 +67,7 @@ public class CourseTeamService {
         ensureTeacher(courseId, currentUserId);
 
         String normalizedName = request.getName().trim();
-        if (courseTeamRepository.existsByCourseIdAndNameIgnoreCase(courseId, normalizedName)) {
+        if (courseTeamRepository.existsByCourseIdAndPostIsNullAndNameIgnoreCase(courseId, normalizedName)) {
             throw new DuplicateResourceException("Team with this name already exists");
         }
 
@@ -75,6 +76,40 @@ public class CourseTeamService {
         CourseTeam team = courseTeamRepository.save(CourseTeam.builder()
                 .course(course)
                 .name(normalizedName)
+                .maxSize(request.getMaxSize())
+                .selfEnrollmentEnabled(Boolean.TRUE.equals(request.getSelfEnrollmentEnabled()))
+                .categories(categories)
+                .build());
+
+        List<CourseMember> members = assignMembers(courseId, team, request.getMemberIds());
+        return toTeamDto(team, members);
+    }
+
+    @Transactional
+    public CourseTeamDto createTeamForPost(UUID courseId,
+                                           UUID postId,
+                                           CreateCourseTeamRequest request,
+                                           UUID currentUserId) {
+        Course course = getCourseOrThrow(courseId);
+        ensureTeacher(courseId, currentUserId);
+        Post post = getPostOrThrow(courseId, postId);
+        if (post.getType() != PostType.TASK) {
+            throw new BadRequestException("Teams can only be created for task posts");
+        }
+
+        String normalizedName = request.getName().trim();
+        if (courseTeamRepository.existsByCourseIdAndPostIdAndNameIgnoreCase(courseId, postId, normalizedName)) {
+            throw new DuplicateResourceException("Team with this name already exists in this assignment");
+        }
+
+        Set<CourseCategory> categories = resolveTeamCategories(courseId, request.getCategoryIds());
+
+        CourseTeam team = courseTeamRepository.save(CourseTeam.builder()
+                .course(course)
+                .post(post)
+                .name(normalizedName)
+                .maxSize(request.getMaxSize())
+                .selfEnrollmentEnabled(Boolean.TRUE.equals(request.getSelfEnrollmentEnabled()))
                 .categories(categories)
                 .build());
 

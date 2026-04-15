@@ -66,6 +66,7 @@ public class TeamFormationController {
 
         TeamFormationModeDto result = TeamFormationModeDto.builder()
                 .mode(postService.getTeamFormationMode(courseId, postId, principal.getId()))
+                .isCaptain(postCaptainService.isCaptain(courseId, postId, principal.getId()))
                 .build();
 
         return ResponseEntity.ok(result);
@@ -95,6 +96,7 @@ public class TeamFormationController {
 
         TeamFormationModeDto result = TeamFormationModeDto.builder()
                 .mode(postService.setTeamFormationMode(courseId, postId, request.getMode(), principal.getId()))
+                .isCaptain(postCaptainService.isCaptain(courseId, postId, principal.getId()))
                 .build();
 
         return ResponseEntity.ok(result);
