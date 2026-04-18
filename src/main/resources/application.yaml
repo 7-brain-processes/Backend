@@ -17,6 +17,9 @@ spring:
       max-file-size: ${MAX_FILE_SIZE:10MB}
       max-request-size: ${MAX_REQUEST_SIZE:10MB}
 
+server:
+  forward-headers-strategy: framework
+
 jwt:
   secret: ${JWT_SECRET:Y2xhc3Nyb29tLWFwcC1zZWNyZXQta2V5LXRoYXQtaXMtbG9uZy1lbm91Z2gtZm9yLWhtYWMtc2hhMjU2}
   expiration-ms: ${JWT_EXPIRATION_MS:86400000}
