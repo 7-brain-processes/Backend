@@ -297,4 +297,54 @@ class SolutionFileControllerIT {
             assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
         }
     }
+
+    @Nested
+    class DownloadSolutionFile {
+
+        @Test
+        void returns200_whenMemberDownloadsFile() {
+            String tToken = registerAndGetToken("teacher1");
+            String sToken = registerAndGetToken("student1");
+            User teacher = user("teacher1");
+            User student = user("student1");
+            Course c = createCourse("C1");
+            addMember(c, teacher, CourseRole.TEACHER);
+            addMember(c, student, CourseRole.STUDENT);
+            Post task = createTask(c, teacher);
+            Solution sol = createSolution(task, student);
+
+            var uploadResp = restTemplate.exchange(
+                    base(c.getId(), task.getId(), sol.getId()),
+                    HttpMethod.POST, uploadReq(sToken), FileDto.class);
+            assertThat(uploadResp.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+            UUID fileId = uploadResp.getBody().getId();
+
+            var resp = restTemplate.exchange(
+                    base(c.getId(), task.getId(), sol.getId()) + "/" + fileId + "/download",
+                    HttpMethod.GET, auth(sToken), byte[].class);
+
+            assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(resp.getBody()).isNotNull();
+            assertThat(resp.getBody().length).isGreaterThan(0);
+        }
+
+        @Test
+        void returns404_whenFileDoesNotExist() {
+            String tToken = registerAndGetToken("teacher1");
+            String sToken = registerAndGetToken("student1");
+            User teacher = user("teacher1");
+            User student = user("student1");
+            Course c = createCourse("C1");
+            addMember(c, teacher, CourseRole.TEACHER);
+            addMember(c, student, CourseRole.STUDENT);
+            Post task = createTask(c, teacher);
+            Solution sol = createSolution(task, student);
+
+            var resp = restTemplate.exchange(
+                    base(c.getId(), task.getId(), sol.getId()) + "/" + UUID.randomUUID() + "/download",
+                    HttpMethod.GET, auth(sToken), String.class);
+
+            assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        }
+    }
 }

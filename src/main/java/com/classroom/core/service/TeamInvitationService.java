@@ -124,7 +124,14 @@ public class TeamInvitationService {
         ensureIsCaptain(courseId, postId, captainId);
 
         CourseTeam team = courseTeamRepository.findByPostIdAndCaptainId(postId, captainId)
-                .orElseThrow(() -> new ResourceNotFoundException("Captain team not found"));
+                .orElse(null);
+
+        if (team == null) {
+            return StudentTeamDto.builder()
+                    .membersCount(0)
+                    .members(List.of())
+                    .build();
+        }
 
         List<CourseTeamMemberDto> members = courseMemberRepository
                 .findByCourseIdAndTeamIdOrderByJoinedAtAsc(courseId, team.getId())

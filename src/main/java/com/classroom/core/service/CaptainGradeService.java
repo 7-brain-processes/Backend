@@ -45,6 +45,9 @@ public class CaptainGradeService {
         if (teamGrade.getDistributionMode() != TeamGradeDistributionMode.CAPTAIN_MANUAL) {
             throw new BadRequestException("Captain grade distribution is not enabled for this post");
         }
+        if (teamGrade.getGrade() == null) {
+            throw new BadRequestException("Team grade has not been set yet");
+        }
 
         List<CourseMember> members = courseMemberRepository
                 .findByCourseIdAndTeamIdOrderByJoinedAtAsc(courseId, team.getId());
@@ -52,7 +55,10 @@ public class CaptainGradeService {
         Map<UUID, Integer> gradeByStudent = teamStudentGradeRepository
                 .findByTeamGradeIdOrderByStudentIdAsc(teamGrade.getId())
                 .stream()
-                .collect(Collectors.toMap(g -> g.getStudent().getId(), TeamStudentGrade::getGrade));
+                .collect(Collectors.toMap(
+                        g -> g.getStudent().getId(),
+                        TeamStudentGrade::getGrade,
+                        (existing, replacement) -> replacement));
 
         List<StudentDistributedGradeDto> students = members.stream()
                 .map(m -> StudentDistributedGradeDto.builder()
@@ -74,6 +80,7 @@ public class CaptainGradeService {
                                                      CaptainGradeDistributionRequest request, UUID captainId) {
         ensureIsCaptain(postId, captainId);
         requireTaskPostInCourse(courseId, postId);
+        validateRequest(request);
 
         CourseTeam team = courseTeamRepository.findByPostIdAndCaptainId(postId, captainId)
                 .orElseThrow(() -> new ResourceNotFoundException("Captain's team not found"));
@@ -143,6 +150,17 @@ public class CaptainGradeService {
                 .distributionMode(TeamGradeDistributionMode.CAPTAIN_MANUAL)
                 .students(students)
                 .build();
+    }
+
+    private void validateRequest(CaptainGradeDistributionRequest request) {
+        if (request == null || request.getGrades() == null || request.getGrades().isEmpty()) {
+            throw new BadRequestException("Grade distribution payload must contain grades");
+        }
+        boolean hasNullEntry = request.getGrades().stream()
+                .anyMatch(entry -> entry == null || entry.getStudentId() == null || entry.getGrade() == null);
+        if (hasNullEntry) {
+            throw new BadRequestException("Each grade entry must contain studentId and grade");
+        }
     }
 
     private void ensureIsCaptain(UUID postId, UUID captainId) {
