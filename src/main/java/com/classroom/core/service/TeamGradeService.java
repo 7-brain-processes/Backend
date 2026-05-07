@@ -2,6 +2,7 @@ package com.classroom.core.service;
 
 import com.classroom.core.dto.auth.UserDto;
 import com.classroom.core.dto.team.SetTeamGradeDistributionModeRequest;
+import com.classroom.core.dto.team.MyTeamGradeDto;
 import com.classroom.core.dto.team.StudentDistributedGradeDto;
 import com.classroom.core.dto.team.TeamGradeDistributionDto;
 import com.classroom.core.dto.team.TeamGradeDto;
@@ -47,6 +48,65 @@ public class TeamGradeService {
     private final TeamGradeRepository teamGradeRepository;
     private final TeamStudentGradeRepository teamStudentGradeRepository;
     private final TeamGradeVoteRepository teamGradeVoteRepository;
+
+    public MyTeamGradeDto getCurrentStudentTeamGrade(UUID courseId, UUID postId, UUID currentUserId) {
+        requireTaskPostInCourse(courseId, postId);
+
+        CourseMember student = courseMemberRepository.findByCourseIdAndUserId(courseId, currentUserId)
+                .orElseThrow(() -> new ForbiddenException("You are not a member of this course"));
+        if (student.getRole() != CourseRole.STUDENT) {
+            throw new ForbiddenException("Only students can view team grade information");
+        }
+
+        CourseMember membership = courseMemberRepository.findStudentTeamInPost(courseId, currentUserId, postId)
+                .orElseThrow(() -> new ResourceNotFoundException("Student is not in any team for this assignment"));
+
+        CourseTeam team = membership.getTeam();
+        TeamGrade grade = teamGradeRepository.findByPostIdAndTeamId(postId, team.getId())
+                .orElse(null);
+
+        if (grade == null) {
+            return MyTeamGradeDto.builder()
+                    .teamId(team.getId())
+                    .teamName(team.getName())
+                    .distributionMode(TeamGradeDistributionMode.MANUAL)
+                    .finalized(false)
+                    .build();
+        }
+
+        List<TeamStudentGrade> savedGrades = teamStudentGradeRepository
+                .findByTeamGradeIdOrderByStudentIdAsc(grade.getId());
+        boolean finalized = !savedGrades.isEmpty();
+
+        Integer myGrade = teamStudentGradeRepository.findByTeamGradeIdAndStudentId(grade.getId(), currentUserId)
+                .map(TeamStudentGrade::getGrade)
+                .orElse(null);
+
+        List<StudentDistributedGradeDto> finalDistribution = null;
+        if (finalized) {
+            List<CourseMember> members = courseMemberRepository
+                    .findByCourseIdAndTeamIdOrderByJoinedAtAsc(courseId, team.getId());
+            Map<UUID, Integer> savedGradesByStudent = savedGrades.stream()
+                    .collect(Collectors.toMap(entry -> entry.getStudent().getId(), TeamStudentGrade::getGrade));
+
+            finalDistribution = members.stream()
+                    .map(member -> StudentDistributedGradeDto.builder()
+                            .student(UserDto.from(member.getUser()))
+                            .grade(savedGradesByStudent.get(member.getUser().getId()))
+                            .build())
+                    .toList();
+        }
+
+        return MyTeamGradeDto.builder()
+                .teamId(team.getId())
+                .teamName(team.getName())
+                .teamGrade(grade.getGrade())
+                .distributionMode(grade.getDistributionMode())
+                .myGrade(myGrade)
+                .finalized(finalized)
+                .finalDistribution(finalDistribution)
+                .build();
+    }
 
     public TeamGradeDto getTeamGrade(UUID courseId, UUID postId, UUID teamId, UUID currentUserId) {
         ensureTeacher(courseId, currentUserId);
