@@ -43,6 +43,10 @@ tags:
     description: File attachments on solutions
   - name: Grading
     description: Marks and teacher comments on solutions
+  - name: Multi-Criteria Grading
+    description: >
+      Assignment-level grading configuration (criteria and modifiers)
+      and per-solution decomposed grade submission / viewing.
 
 security:
   - bearerAuth: []
@@ -2157,6 +2161,166 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /courses/{courseId}/posts/{postId}/grading-config:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    get:
+      tags: [Multi-Criteria Grading]
+      summary: Get grading configuration for an assignment
+      operationId: getGradingConfig
+      responses:
+        "200":
+          description: Grading configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GradingConfigDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      tags: [Multi-Criteria Grading]
+      summary: Set or update grading configuration (teacher only)
+      operationId: upsertGradingConfig
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertGradingConfigRequest"
+      responses:
+        "200":
+          description: Configuration saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GradingConfigDto"
+        "400":
+          description: Invalid configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    delete:
+      tags: [Multi-Criteria Grading]
+      summary: Remove grading configuration (teacher only)
+      operationId: deleteGradingConfig
+      responses:
+        "204":
+          description: Configuration removed
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/solutions/{solutionId}/criteria-grades:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+      - $ref: "#/components/parameters/SolutionId"
+
+    get:
+      tags: [Multi-Criteria Grading]
+      summary: Get criteria grades for a solution
+      operationId: getCriteriaGrades
+      responses:
+        "200":
+          description: Criteria grades and computed result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CriteriaGradeResultDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      tags: [Multi-Criteria Grading]
+      summary: Save or update criteria grades (teacher only)
+      operationId: upsertCriteriaGrades
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CriteriaGradeSubmissionDto"
+      responses:
+        "200":
+          description: Grades saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CriteriaGradeResultDto"
+        "400":
+          description: Invalid grade submission
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/solutions/{solutionId}/criteria-grades/publish:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+      - $ref: "#/components/parameters/SolutionId"
+
+    post:
+      tags: [Multi-Criteria Grading]
+      summary: Publish criteria grades so students can view them (teacher only)
+      operationId: publishCriteriaGrades
+      responses:
+        "200":
+          description: Grades published
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CriteriaGradeResultDto"
+        "400":
+          description: No grades to publish
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/solutions/my/grade-decomposition:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    get:
+      tags: [Multi-Criteria Grading]
+      summary: Get own grade decomposition (student only, visible if published)
+      operationId: getMyGradeDecomposition
+      responses:
+        "200":
+          description: Grade decomposition
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GradeDecompositionDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -3328,6 +3492,289 @@ components:
           maxLength: 5000
           description: Optional comment along with the grade
           example: "Good work, but improve error handling."
+
+    CriterionType:
+      type: string
+      enum: [YES_NO, PERCENTAGE, POINTS]
+
+    GradingConfigDto:
+      type: object
+      properties:
+        postId:
+          type: string
+          format: uuid
+        maxGrade:
+          type: number
+          minimum: 0
+          example: 100
+        criteria:
+          type: array
+          items:
+            $ref: "#/components/schemas/CriterionConfigDto"
+        modifiers:
+          $ref: "#/components/schemas/ModifierConfigDto"
+        resultsVisible:
+          type: boolean
+          default: false
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CriterionConfigDto:
+      type: object
+      required: [id, type, title, maxPoints]
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          $ref: "#/components/schemas/CriterionType"
+        title:
+          type: string
+          minLength: 1
+          maxLength: 300
+          example: "Code quality"
+        maxPoints:
+          type: number
+          example: 20
+        weight:
+          type: number
+          default: 1.0
+          example: 1.0
+        sortOrder:
+          type: integer
+          minimum: 0
+          example: 0
+
+    ModifierConfigDto:
+      type: object
+      properties:
+        deadlines:
+          $ref: "#/components/schemas/DeadlineModifierDto"
+        teamSize:
+          $ref: "#/components/schemas/TeamSizeModifierDto"
+        progressRegularity:
+          $ref: "#/components/schemas/ProgressRegularityModifierDto"
+        contributionVoting:
+          $ref: "#/components/schemas/ContributionModifierDto"
+
+    DeadlineModifierDto:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+          default: false
+        softDeadline:
+          type: string
+          format: date-time
+          nullable: true
+        hardDeadline:
+          type: string
+          format: date-time
+          nullable: true
+        softDeadlineBonus:
+          type: number
+          nullable: true
+          example: 5
+        earlySubmissionBonusPerDay:
+          type: number
+          nullable: true
+          example: 1
+        latePenaltyPerDay:
+          type: number
+          nullable: true
+          example: 2
+        maxLatePenaltyDays:
+          type: integer
+          minimum: 1
+          nullable: true
+          example: 5
+
+    TeamSizeModifierDto:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+          default: false
+        formula:
+          type: string
+          maxLength: 500
+          nullable: true
+          example: "max(0, 1 - 0.05 * (size - 1))"
+
+    ProgressRegularityModifierDto:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+          default: false
+        checkpointCount:
+          type: integer
+          minimum: 1
+          nullable: true
+          example: 3
+        pointsPerCheckpoint:
+          type: number
+          nullable: true
+          example: 2
+
+    ContributionModifierDto:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+          default: false
+        description:
+          type: string
+          maxLength: 1000
+          nullable: true
+          example: "Anonymous voting on contribution %"
+
+    UpsertGradingConfigRequest:
+      type: object
+      required: [maxGrade, criteria]
+      properties:
+        maxGrade:
+          type: number
+          minimum: 1
+          example: 100
+        criteria:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/CriterionConfigDto"
+        modifiers:
+          $ref: "#/components/schemas/ModifierConfigDto"
+        resultsVisible:
+          type: boolean
+          default: false
+
+    CriteriaGradeSubmissionDto:
+      type: object
+      required: [grades]
+      properties:
+        grades:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/CriterionGradeEntryDto"
+
+    CriterionGradeEntryDto:
+      type: object
+      required: [criterionId, value]
+      properties:
+        criterionId:
+          type: string
+          format: uuid
+        value:
+          type: number
+          description: >
+            YES_NO: 0 or 1.
+            PERCENTAGE: 0–100.
+            POINTS: absolute value (may be negative if maxPoints is negative).
+          example: 85
+        comment:
+          type: string
+          maxLength: 2000
+          nullable: true
+
+    CriteriaGradeResultDto:
+      type: object
+      properties:
+        solutionId:
+          type: string
+          format: uuid
+        criteriaGrades:
+          type: array
+          items:
+            $ref: "#/components/schemas/CriterionGradeResultItemDto"
+        modifierEffects:
+          type: array
+          items:
+            $ref: "#/components/schemas/ModifierEffectDto"
+        basicScore:
+          type: number
+          example: 75
+        modifierDelta:
+          type: number
+          example: -3
+        finalScore:
+          type: number
+          example: 72
+        maxGrade:
+          type: number
+          example: 100
+        isPublished:
+          type: boolean
+        gradedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    CriterionGradeResultItemDto:
+      type: object
+      properties:
+        criterion:
+          $ref: "#/components/schemas/CriterionConfigDto"
+        value:
+          type: number
+          description: Raw value entered by instructor.
+          example: 85
+        computedPoints:
+          type: number
+          description: Final points after applying criterion logic.
+          example: 17
+        comment:
+          type: string
+          nullable: true
+
+    ModifierEffectDto:
+      type: object
+      properties:
+        modifierType:
+          type: string
+          enum: [DEADLINE, TEAM_SIZE, PROGRESS_REGULARITY, CONTRIBUTION]
+        description:
+          type: string
+          example: "Late submission penalty: 3 days × 2 pts"
+        delta:
+          type: number
+          description: Positive = bonus, negative = penalty.
+          example: -6
+
+    GradeDecompositionDto:
+      type: object
+      properties:
+        postId:
+          type: string
+          format: uuid
+        solutionId:
+          type: string
+          format: uuid
+        maxGrade:
+          type: number
+          example: 100
+        basicScore:
+          type: number
+          example: 75
+        modifierEffects:
+          type: array
+          items:
+            $ref: "#/components/schemas/ModifierEffectDto"
+        finalScore:
+          type: number
+          example: 72
+        criteriaBreakdown:
+          type: array
+          items:
+            $ref: "#/components/schemas/CriterionGradeResultItemDto"
+        publishedAt:
+          type: string
+          format: date-time
+          nullable: true
 
     ErrorResponse:
       type: object
