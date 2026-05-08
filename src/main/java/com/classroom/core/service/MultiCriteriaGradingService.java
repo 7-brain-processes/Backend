@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -137,7 +138,7 @@ public class MultiCriteriaGradingService {
                 .modifierDelta(null)
                 .finalScore(null)
                 .maxGrade(config.getMaxGrade())
-                .isPublished(false)
+                .isPublished(config.getResultsVisible())
                 .gradedAt(latestGradedAt)
                 .build();
     }
@@ -201,6 +202,135 @@ public class MultiCriteriaGradingService {
                 .isPublished(false)
                 .gradedAt(Instant.now())
                 .build();
+    }
+
+    @Transactional
+    public void setGradePublished(UUID courseId, UUID postId, UUID userId, boolean published) {
+        ensureTeacher(courseId, userId);
+        requireTaskPostInCourse(courseId, postId);
+        GradingConfig config = requireGradingConfig(postId);
+        config.setResultsVisible(published);
+        gradingConfigRepository.save(config);
+    }
+
+    public CriteriaGradeResultDto getGradeDecomposition(UUID courseId, UUID postId, UUID solutionId, UUID userId) {
+        requireMember(courseId, userId);
+        requireTaskPostInCourse(courseId, postId);
+        Solution solution = requireSolutionInPost(postId, solutionId);
+        GradingConfig config = requireGradingConfig(postId);
+
+        CourseMember member = courseMemberRepository.findByCourseIdAndUserId(courseId, userId).orElseThrow();
+        boolean isTeacher = member.getRole() == CourseRole.TEACHER;
+
+        if (!isTeacher) {
+            if (!solution.getStudent().getId().equals(userId)) {
+                throw new ForbiddenException("You can only view your own grade decomposition");
+            }
+            if (!Boolean.TRUE.equals(config.getResultsVisible())) {
+                throw new ForbiddenException("Grade decomposition is not yet published by the teacher");
+            }
+        }
+
+        List<CriterionGrade> grades = criterionGradeRepository.findBySolutionId(solutionId);
+        Map<UUID, CriterionGrade> gradeByCriterion = grades.stream()
+                .collect(Collectors.toMap(g -> g.getCriterion().getId(), g -> g));
+
+        List<CriterionGradeResultItemDto> items = new ArrayList<>();
+        for (Criterion criterion : config.getCriteria()) {
+            CriterionGrade grade = gradeByCriterion.get(criterion.getId());
+            BigDecimal value = grade != null ? grade.getValue() : BigDecimal.ZERO;
+            BigDecimal computed = criterion.computePoints(value);
+            items.add(CriterionGradeResultItemDto.builder()
+                    .criterion(toCriterionConfigDto(criterion))
+                    .value(value)
+                    .computedPoints(computed)
+                    .comment(grade != null ? grade.getComment() : null)
+                    .build());
+        }
+
+        BigDecimal basicScore = config.computeBasicScore(grades);
+
+        List<ModifierEffectDto> effects = new ArrayList<>();
+        BigDecimal modifierDelta = computeModifierDelta(config, solution, effects);
+
+        BigDecimal rawFinal = basicScore.add(modifierDelta);
+        BigDecimal finalScore = rawFinal.max(BigDecimal.ZERO).min(config.getMaxGrade());
+
+        Instant latestGradedAt = grades.stream()
+                .map(CriterionGrade::getUpdatedAt)
+                .max(Comparator.naturalOrder())
+                .orElse(null);
+
+        return CriteriaGradeResultDto.builder()
+                .solutionId(solutionId)
+                .criteriaGrades(items)
+                .modifierEffects(effects)
+                .basicScore(basicScore)
+                .modifierDelta(modifierDelta)
+                .finalScore(finalScore)
+                .maxGrade(config.getMaxGrade())
+                .isPublished(config.getResultsVisible())
+                .gradedAt(latestGradedAt)
+                .build();
+    }
+
+    private BigDecimal computeModifierDelta(GradingConfig config, Solution solution, List<ModifierEffectDto> effects) {
+        if (config.getModifiersJson() == null || config.getModifiersJson().isBlank()) {
+            return BigDecimal.ZERO;
+        }
+        ModifierConfigDto modifiers;
+        try {
+            modifiers = objectMapper.readValue(config.getModifiersJson(), ModifierConfigDto.class);
+        } catch (JsonProcessingException e) {
+            return BigDecimal.ZERO;
+        }
+
+        BigDecimal total = BigDecimal.ZERO;
+
+        DeadlineModifierDto deadline = modifiers.getDeadlines();
+        if (deadline != null && Boolean.TRUE.equals(deadline.getEnabled())) {
+            BigDecimal delta = computeDeadlineDelta(deadline, solution.getSubmittedAt());
+            if (delta.compareTo(BigDecimal.ZERO) != 0) {
+                effects.add(ModifierEffectDto.builder()
+                        .modifierType("DEADLINE")
+                        .description(delta.compareTo(BigDecimal.ZERO) > 0 ? "Early submission bonus" : "Late submission penalty")
+                        .delta(delta)
+                        .build());
+                total = total.add(delta);
+            }
+        }
+
+        return total;
+    }
+
+    private BigDecimal computeDeadlineDelta(DeadlineModifierDto deadline, Instant submittedAt) {
+        if (submittedAt == null) return BigDecimal.ZERO;
+
+        Instant hardDeadline = deadline.getHardDeadline();
+        Instant softDeadline = deadline.getSoftDeadline();
+
+        if (hardDeadline != null && submittedAt.isAfter(hardDeadline)) {
+            long daysLate = ChronoUnit.DAYS.between(hardDeadline, submittedAt) + 1;
+            if (deadline.getMaxLatePenaltyDays() != null) {
+                daysLate = Math.min(daysLate, deadline.getMaxLatePenaltyDays());
+            }
+            BigDecimal penaltyPerDay = deadline.getLatePenaltyPerDay() != null
+                    ? deadline.getLatePenaltyPerDay() : BigDecimal.ZERO;
+            return penaltyPerDay.multiply(BigDecimal.valueOf(daysLate)).negate();
+        }
+
+        if (softDeadline != null && !submittedAt.isAfter(softDeadline)) {
+            if (deadline.getEarlySubmissionBonusPerDay() != null
+                    && deadline.getEarlySubmissionBonusPerDay().compareTo(BigDecimal.ZERO) > 0) {
+                long daysEarly = ChronoUnit.DAYS.between(submittedAt, softDeadline);
+                return deadline.getEarlySubmissionBonusPerDay().multiply(BigDecimal.valueOf(daysEarly));
+            }
+            if (deadline.getSoftDeadlineBonus() != null) {
+                return deadline.getSoftDeadlineBonus();
+            }
+        }
+
+        return BigDecimal.ZERO;
     }
 
     private GradingConfigDto toConfigDto(GradingConfig config) {

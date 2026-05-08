@@ -128,6 +128,79 @@ public class MultiCriteriaGradingController {
         return ResponseEntity.ok(result);
     }
 
+    @PostMapping("/criteria-grades/publish")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(
+            summary = "Publish criteria grades for the assignment (teacher only)",
+            description = "Makes grade decomposition visible to students. Equivalent to setting resultsVisible=true.",
+            operationId = "publishCriteriaGrades",
+            security = @SecurityRequirement(name = "bearerAuth"),
+            responses = {
+                    @ApiResponse(responseCode = "204", description = "Grades published"),
+                    @ApiResponse(responseCode = "403", description = "Insufficient permissions",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "404", description = "Resource not found",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            }
+    )
+    public void publishCriteriaGrades(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable UUID courseId,
+            @PathVariable UUID postId) {
+
+        gradingService.setGradePublished(courseId, postId, principal.getId(), true);
+    }
+
+    @DeleteMapping("/criteria-grades/publish")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(
+            summary = "Unpublish criteria grades for the assignment (teacher only)",
+            description = "Hides grade decomposition from students.",
+            operationId = "unpublishCriteriaGrades",
+            security = @SecurityRequirement(name = "bearerAuth"),
+            responses = {
+                    @ApiResponse(responseCode = "204", description = "Grades unpublished"),
+                    @ApiResponse(responseCode = "403", description = "Insufficient permissions",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "404", description = "Resource not found",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            }
+    )
+    public void unpublishCriteriaGrades(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable UUID courseId,
+            @PathVariable UUID postId) {
+
+        gradingService.setGradePublished(courseId, postId, principal.getId(), false);
+    }
+
+    @GetMapping("/solutions/{solutionId}/grade-decomposition")
+    @Operation(
+            summary = "Get full grade decomposition for a solution",
+            description = "Returns criteria grades, modifier effects, and final score. " +
+                    "Teachers can always access any solution. " +
+                    "Students can only access their own solution when grades are published.",
+            operationId = "getGradeDecomposition",
+            security = @SecurityRequirement(name = "bearerAuth"),
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Full grade decomposition",
+                            content = @Content(schema = @Schema(implementation = CriteriaGradeResultDto.class))),
+                    @ApiResponse(responseCode = "403", description = "Grades not published or access denied",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "404", description = "Resource not found",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            }
+    )
+    public ResponseEntity<CriteriaGradeResultDto> getGradeDecomposition(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable UUID courseId,
+            @PathVariable UUID postId,
+            @PathVariable UUID solutionId) {
+
+        CriteriaGradeResultDto result = gradingService.getGradeDecomposition(courseId, postId, solutionId, principal.getId());
+        return ResponseEntity.ok(result);
+    }
+
     @PutMapping("/solutions/{solutionId}/criteria-grades")
     @Operation(
             summary = "Save or update criteria grades (teacher only)",
