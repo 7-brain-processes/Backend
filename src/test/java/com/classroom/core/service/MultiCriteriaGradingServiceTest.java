@@ -31,7 +31,13 @@ class MultiCriteriaGradingServiceTest {
     @Mock
     private CriterionRepository criterionRepository;
     @Mock
-    private CriterionGradeRepository criterionGradeRepository;
+    private GradingConfigVersionRepository gradingConfigVersionRepository;
+    @Mock
+    private VersionedCriterionRepository versionedCriterionRepository;
+    @Mock
+    private AssessmentResultRepository assessmentResultRepository;
+    @Mock
+    private AssessmentCriterionGradeRepository assessmentCriterionGradeRepository;
     @Mock
     private PostRepository postRepository;
     @Mock
@@ -119,6 +125,8 @@ class MultiCriteriaGradingServiceTest {
                 .type(CriterionType.POINTS)
                 .maxPoints(new BigDecimal("20"))
                 .weight(BigDecimal.ONE)
+                .title("Quality")
+                .sortOrder(0)
                 .build();
         GradingConfig config = GradingConfig.builder()
                 .id(UUID.randomUUID())
@@ -135,7 +143,12 @@ class MultiCriteriaGradingServiceTest {
         when(gradingConfigRepository.findByPostId(postId)).thenReturn(Optional.of(config));
         when(criterionRepository.findByGradingConfigIdOrderBySortOrderAsc(config.getId()))
                 .thenReturn(List.of(criterion));
-        when(criterionGradeRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(assessmentResultRepository.findBySolutionId(solutionId)).thenReturn(Optional.empty());
+        when(gradingConfigVersionRepository.findTopByPostIdOrderByVersionNumberDesc(postId))
+                .thenReturn(Optional.empty());
+        when(gradingConfigVersionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(assessmentResultRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(solutionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         CriteriaGradeSubmissionDto request = CriteriaGradeSubmissionDto.builder()
                 .grades(List.of(
@@ -165,6 +178,8 @@ class MultiCriteriaGradingServiceTest {
                 .type(CriterionType.YES_NO)
                 .maxPoints(new BigDecimal("10"))
                 .weight(BigDecimal.ONE)
+                .title("Passed")
+                .sortOrder(0)
                 .build();
         GradingConfig config = GradingConfig.builder()
                 .id(UUID.randomUUID())
@@ -181,7 +196,12 @@ class MultiCriteriaGradingServiceTest {
         when(gradingConfigRepository.findByPostId(postId)).thenReturn(Optional.of(config));
         when(criterionRepository.findByGradingConfigIdOrderBySortOrderAsc(config.getId()))
                 .thenReturn(List.of(criterion));
-        when(criterionGradeRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(assessmentResultRepository.findBySolutionId(solutionId)).thenReturn(Optional.empty());
+        when(gradingConfigVersionRepository.findTopByPostIdOrderByVersionNumberDesc(postId))
+                .thenReturn(Optional.empty());
+        when(gradingConfigVersionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(assessmentResultRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(solutionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         CriteriaGradeSubmissionDto request = CriteriaGradeSubmissionDto.builder()
                 .grades(List.of(
@@ -209,6 +229,8 @@ class MultiCriteriaGradingServiceTest {
                 .type(CriterionType.PERCENTAGE)
                 .maxPoints(new BigDecimal("20"))
                 .weight(BigDecimal.ONE)
+                .title("Coverage")
+                .sortOrder(0)
                 .build();
         GradingConfig config = GradingConfig.builder()
                 .id(UUID.randomUUID())
@@ -225,7 +247,12 @@ class MultiCriteriaGradingServiceTest {
         when(gradingConfigRepository.findByPostId(postId)).thenReturn(Optional.of(config));
         when(criterionRepository.findByGradingConfigIdOrderBySortOrderAsc(config.getId()))
                 .thenReturn(List.of(criterion));
-        when(criterionGradeRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(assessmentResultRepository.findBySolutionId(solutionId)).thenReturn(Optional.empty());
+        when(gradingConfigVersionRepository.findTopByPostIdOrderByVersionNumberDesc(postId))
+                .thenReturn(Optional.empty());
+        when(gradingConfigVersionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(assessmentResultRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(solutionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         CriteriaGradeSubmissionDto request = CriteriaGradeSubmissionDto.builder()
                 .grades(List.of(
@@ -252,6 +279,8 @@ class MultiCriteriaGradingServiceTest {
                 .id(criterionId)
                 .type(CriterionType.YES_NO)
                 .maxPoints(new BigDecimal("10"))
+                .title("Passed")
+                .sortOrder(0)
                 .build();
         GradingConfig config = GradingConfig.builder()
                 .id(UUID.randomUUID())
@@ -268,6 +297,10 @@ class MultiCriteriaGradingServiceTest {
         when(gradingConfigRepository.findByPostId(postId)).thenReturn(Optional.of(config));
         when(criterionRepository.findByGradingConfigIdOrderBySortOrderAsc(config.getId()))
                 .thenReturn(List.of(criterion));
+        when(assessmentResultRepository.findBySolutionId(solutionId)).thenReturn(Optional.empty());
+        when(gradingConfigVersionRepository.findTopByPostIdOrderByVersionNumberDesc(postId))
+                .thenReturn(Optional.empty());
+        when(gradingConfigVersionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         CriteriaGradeSubmissionDto request = CriteriaGradeSubmissionDto.builder()
                 .grades(List.of(
@@ -294,6 +327,8 @@ class MultiCriteriaGradingServiceTest {
                 .id(criterionId)
                 .type(CriterionType.POINTS)
                 .maxPoints(new BigDecimal("20"))
+                .title("Quality")
+                .sortOrder(0)
                 .build();
         GradingConfig config = GradingConfig.builder()
                 .id(UUID.randomUUID())
@@ -310,6 +345,7 @@ class MultiCriteriaGradingServiceTest {
         when(gradingConfigRepository.findByPostId(postId)).thenReturn(Optional.of(config));
         when(criterionRepository.findByGradingConfigIdOrderBySortOrderAsc(config.getId()))
                 .thenReturn(List.of(criterion));
+        when(assessmentResultRepository.findBySolutionId(solutionId)).thenReturn(Optional.empty());
 
         CriteriaGradeSubmissionDto request = CriteriaGradeSubmissionDto.builder()
                 .grades(List.of())
@@ -318,6 +354,127 @@ class MultiCriteriaGradingServiceTest {
         assertThatThrownBy(() -> gradingService.upsertCriteriaGrades(courseId, postId, solutionId, request, userId))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("Grades must be submitted for exactly the configured criteria");
+    }
+
+    @Test
+    void upsertCriteriaGrades_shouldReject_whenAlreadyPublished() {
+        Course course = Course.builder().id(courseId).build();
+        Post post = Post.builder().id(postId).course(course).type(PostType.TASK).build();
+        User student = User.builder().id(UUID.randomUUID()).build();
+        Solution solution = Solution.builder().id(solutionId).post(post).student(student).build();
+        UUID criterionId = UUID.randomUUID();
+        Criterion criterion = Criterion.builder()
+                .id(criterionId)
+                .type(CriterionType.POINTS)
+                .maxPoints(new BigDecimal("20"))
+                .title("Quality")
+                .sortOrder(0)
+                .build();
+        GradingConfig config = GradingConfig.builder()
+                .id(UUID.randomUUID())
+                .post(post)
+                .maxGrade(new BigDecimal("100"))
+                .criteria(List.of(criterion))
+                .build();
+        AssessmentResult published = AssessmentResult.builder()
+                .solution(solution)
+                .isPublished(true)
+                .build();
+
+        when(courseRepository.existsById(courseId)).thenReturn(true);
+        when(courseMemberRepository.findByCourseIdAndUserId(courseId, userId))
+                .thenReturn(Optional.of(CourseMember.builder().role(CourseRole.TEACHER).build()));
+        when(postRepository.findById(postId)).thenReturn(Optional.of(post));
+        when(solutionRepository.findById(solutionId)).thenReturn(Optional.of(solution));
+        when(gradingConfigRepository.findByPostId(postId)).thenReturn(Optional.of(config));
+        when(assessmentResultRepository.findBySolutionId(solutionId)).thenReturn(Optional.of(published));
+
+        CriteriaGradeSubmissionDto request = CriteriaGradeSubmissionDto.builder()
+                .grades(List.of(
+                        CriterionGradeEntryDto.builder()
+                                .criterionId(criterionId)
+                                .value(new BigDecimal("15"))
+                                .build()
+                ))
+                .build();
+
+        assertThatThrownBy(() -> gradingService.upsertCriteriaGrades(courseId, postId, solutionId, request, userId))
+                .isInstanceOf(ForbiddenException.class)
+                .hasMessageContaining("Published assessment cannot be modified directly");
+    }
+
+    @Test
+    void recalculateAssessment_shouldCreateNewVersionAndRecompute() {
+        Course course = Course.builder().id(courseId).build();
+        Post post = Post.builder().id(postId).course(course).type(PostType.TASK).build();
+        User student = User.builder().id(UUID.randomUUID()).build();
+        Solution solution = Solution.builder().id(solutionId).post(post).student(student).build();
+        Criterion criterion = Criterion.builder()
+                .id(UUID.randomUUID())
+                .type(CriterionType.POINTS)
+                .maxPoints(new BigDecimal("20"))
+                .weight(BigDecimal.ONE)
+                .title("Quality")
+                .sortOrder(0)
+                .build();
+        GradingConfig config = GradingConfig.builder()
+                .id(UUID.randomUUID())
+                .post(post)
+                .maxGrade(new BigDecimal("100"))
+                .criteria(List.of(criterion))
+                .build();
+
+        GradingConfigVersion oldVersion = GradingConfigVersion.builder()
+                .id(UUID.randomUUID())
+                .post(post)
+                .versionNumber(1)
+                .maxGrade(new BigDecimal("100"))
+                .build();
+        VersionedCriterion oldVc = VersionedCriterion.builder()
+                .id(UUID.randomUUID())
+                .configVersion(oldVersion)
+                .type(CriterionType.POINTS)
+                .title("Quality")
+                .maxPoints(new BigDecimal("20"))
+                .weight(BigDecimal.ONE)
+                .sortOrder(0)
+                .build();
+        oldVersion.setCriteria(List.of(oldVc));
+
+        AssessmentResult result = AssessmentResult.builder()
+                .id(UUID.randomUUID())
+                .solution(solution)
+                .configVersion(oldVersion)
+                .isPublished(true)
+                .criterionGrades(new java.util.ArrayList<>(List.of(
+                        AssessmentCriterionGrade.builder()
+                                .assessmentResult(null)
+                                .versionedCriterion(oldVc)
+                                .value(new BigDecimal("15"))
+                                .build()
+                )))
+                .build();
+
+        when(courseRepository.existsById(courseId)).thenReturn(true);
+        when(courseMemberRepository.findByCourseIdAndUserId(courseId, userId))
+                .thenReturn(Optional.of(CourseMember.builder().role(CourseRole.TEACHER).build()));
+        when(postRepository.findById(postId)).thenReturn(Optional.of(post));
+        when(solutionRepository.findById(solutionId)).thenReturn(Optional.of(solution));
+        when(gradingConfigRepository.findByPostId(postId)).thenReturn(Optional.of(config));
+        when(assessmentResultRepository.findBySolutionId(solutionId)).thenReturn(Optional.of(result));
+        when(criterionRepository.findByGradingConfigIdOrderBySortOrderAsc(config.getId()))
+                .thenReturn(List.of(criterion));
+        when(gradingConfigVersionRepository.findTopByPostIdOrderByVersionNumberDesc(postId))
+                .thenReturn(Optional.of(oldVersion));
+        when(versionedCriterionRepository.findByConfigVersionIdOrderBySortOrderAsc(oldVersion.getId()))
+                .thenReturn(List.of(oldVc));
+        when(assessmentResultRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(solutionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        CriteriaGradeResultDto dto = gradingService.recalculateAssessment(courseId, postId, solutionId, userId);
+
+        assertThat(dto.getBasicScore()).isEqualByComparingTo("15");
+        assertThat(dto.getIsPublished()).isFalse();
     }
 
     @Test

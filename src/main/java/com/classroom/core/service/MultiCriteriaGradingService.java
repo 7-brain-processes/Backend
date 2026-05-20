@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -25,7 +26,10 @@ public class MultiCriteriaGradingService {
 
     private final GradingConfigRepository gradingConfigRepository;
     private final CriterionRepository criterionRepository;
-    private final CriterionGradeRepository criterionGradeRepository;
+    private final GradingConfigVersionRepository gradingConfigVersionRepository;
+    private final VersionedCriterionRepository versionedCriterionRepository;
+    private final AssessmentResultRepository assessmentResultRepository;
+    private final AssessmentCriterionGradeRepository assessmentCriterionGradeRepository;
     private final PostRepository postRepository;
     private final SolutionRepository solutionRepository;
     private final CourseMemberRepository courseMemberRepository;
@@ -104,42 +108,31 @@ public class MultiCriteriaGradingService {
         Solution solution = requireSolutionInPost(postId, solutionId);
         GradingConfig config = requireGradingConfig(postId);
 
-        List<CriterionGrade> grades = criterionGradeRepository.findBySolutionId(solutionId);
-        Map<UUID, CriterionGrade> gradeByCriterion = grades.stream()
-                .collect(Collectors.toMap(g -> g.getCriterion().getId(), g -> g));
-
-        List<CriterionGradeResultItemDto> items = new ArrayList<>();
-
-        for (Criterion criterion : config.getCriteria()) {
-            CriterionGrade grade = gradeByCriterion.get(criterion.getId());
-            BigDecimal value = grade != null ? grade.getValue() : BigDecimal.ZERO;
-            BigDecimal computed = criterion.computePoints(value);
-
-            items.add(CriterionGradeResultItemDto.builder()
-                    .criterion(toCriterionConfigDto(criterion))
-                    .value(value)
-                    .computedPoints(computed)
-                    .comment(grade != null ? grade.getComment() : null)
-                    .build());
+        AssessmentResult result = assessmentResultRepository.findBySolutionId(solutionId).orElse(null);
+        if (result != null) {
+            return toResultDto(result);
         }
 
-        BigDecimal basicScore = config.computeBasicScore(grades);
-
-        Instant latestGradedAt = grades.stream()
-                .map(CriterionGrade::getUpdatedAt)
-                .max(Comparator.naturalOrder())
-                .orElse(null);
+        // Return empty preview based on current config
+        List<CriterionGradeResultItemDto> items = config.getCriteria().stream()
+                .sorted(Comparator.comparingInt(Criterion::getSortOrder))
+                .map(c -> CriterionGradeResultItemDto.builder()
+                        .criterion(toCriterionConfigDto(c))
+                        .value(BigDecimal.ZERO)
+                        .computedPoints(BigDecimal.ZERO)
+                        .build())
+                .toList();
 
         return CriteriaGradeResultDto.builder()
                 .solutionId(solutionId)
                 .criteriaGrades(items)
                 .modifierEffects(Collections.emptyList())
-                .basicScore(basicScore)
+                .basicScore(BigDecimal.ZERO)
                 .modifierDelta(null)
                 .finalScore(null)
                 .maxGrade(config.getMaxGrade())
-                .isPublished(config.getResultsVisible())
-                .gradedAt(latestGradedAt)
+                .isPublished(false)
+                .gradedAt(null)
                 .build();
     }
 
@@ -150,6 +143,11 @@ public class MultiCriteriaGradingService {
         requireTaskPostInCourse(courseId, postId);
         Solution solution = requireSolutionInPost(postId, solutionId);
         GradingConfig config = requireGradingConfig(postId);
+
+        AssessmentResult result = assessmentResultRepository.findBySolutionId(solutionId).orElse(null);
+        if (result != null && Boolean.TRUE.equals(result.getIsPublished())) {
+            throw new ForbiddenException("Published assessment cannot be modified directly. Use recalculate first.");
+        }
 
         List<Criterion> criteria = criterionRepository.findByGradingConfigIdOrderBySortOrderAsc(config.getId());
         Map<UUID, Criterion> criterionMap = criteria.stream()
@@ -163,54 +161,94 @@ public class MultiCriteriaGradingService {
             throw new BadRequestException("Grades must be submitted for exactly the configured criteria");
         }
 
-        criterionGradeRepository.deleteBySolutionId(solutionId);
+        // Ensure version snapshot exists for current config
+        GradingConfigVersion version = findOrCreateConfigVersion(config);
+
+        if (result == null) {
+            result = AssessmentResult.builder()
+                    .solution(solution)
+                    .configVersion(version)
+                    .build();
+        } else {
+            result.setConfigVersion(version);
+            result.getCriterionGrades().clear();
+        }
 
         List<CriterionGradeResultItemDto> items = new ArrayList<>();
-        List<CriterionGrade> savedGrades = new ArrayList<>();
+        Map<String, VersionedCriterion> versionedByTitle = version.getCriteria().stream()
+                .collect(Collectors.toMap(VersionedCriterion::getTitle, c -> c));
 
         for (CriterionGradeEntryDto entry : request.getGrades()) {
             Criterion criterion = criterionMap.get(entry.getCriterionId());
             criterion.validateValue(entry.getValue());
 
-            CriterionGrade grade = CriterionGrade.builder()
-                    .solution(solution)
-                    .criterion(criterion)
+            VersionedCriterion vc = versionedByTitle.get(criterion.getTitle());
+            if (vc == null) {
+                throw new BadRequestException("Criterion mismatch between config and version");
+            }
+
+            AssessmentCriterionGrade acg = AssessmentCriterionGrade.builder()
+                    .assessmentResult(result)
+                    .versionedCriterion(vc)
                     .value(entry.getValue())
                     .comment(entry.getComment())
                     .build();
-            savedGrades.add(criterionGradeRepository.save(grade));
+            result.getCriterionGrades().add(acg);
 
-            BigDecimal computed = criterion.computePoints(entry.getValue());
             items.add(CriterionGradeResultItemDto.builder()
                     .criterion(toCriterionConfigDto(criterion))
                     .value(entry.getValue())
-                    .computedPoints(computed)
+                    .computedPoints(vc.computePoints(entry.getValue()))
                     .comment(entry.getComment())
                     .build());
         }
 
-        BigDecimal basicScore = config.computeBasicScore(savedGrades);
+        BigDecimal basicScore = result.computeBasicScore();
+        List<ModifierEffectDto> effects = new ArrayList<>();
+        BigDecimal modifierDelta = computeModifierDelta(version, solution, effects);
+        BigDecimal rawFinal = basicScore.add(modifierDelta);
+        BigDecimal finalScore = rawFinal.max(BigDecimal.ZERO).min(version.getMaxGrade());
 
-        return CriteriaGradeResultDto.builder()
-                .solutionId(solutionId)
-                .criteriaGrades(items)
-                .modifierEffects(Collections.emptyList())
-                .basicScore(basicScore)
-                .modifierDelta(null)
-                .finalScore(null)
-                .maxGrade(config.getMaxGrade())
-                .isPublished(false)
-                .gradedAt(Instant.now())
-                .build();
+        result.setBasicScore(basicScore);
+        result.setModifierDelta(modifierDelta);
+        result.setFinalScore(finalScore);
+        result.setGradedAt(Instant.now());
+
+        AssessmentResult saved = assessmentResultRepository.save(result);
+
+        // Sync simple grade on Solution for backward compatibility
+        solution.setGrade(finalScore.setScale(0, RoundingMode.HALF_UP).intValue());
+        solution.setStatus(SolutionStatus.GRADED);
+        solution.setGradedAt(Instant.now());
+        solutionRepository.save(solution);
+
+        return toResultDto(saved);
     }
 
     @Transactional
     public void setGradePublished(UUID courseId, UUID postId, UUID userId, boolean published) {
         ensureTeacher(courseId, userId);
         requireTaskPostInCourse(courseId, postId);
-        GradingConfig config = requireGradingConfig(postId);
-        config.setResultsVisible(published);
-        gradingConfigRepository.save(config);
+        requireGradingConfig(postId);
+
+        List<AssessmentResult> results = assessmentResultRepository.findBySolutionPostId(postId);
+        if (published) {
+            List<AssessmentResult> unpublished = results.stream()
+                    .filter(r -> !Boolean.TRUE.equals(r.getIsPublished()))
+                    .toList();
+            if (unpublished.isEmpty()) {
+                throw new BadRequestException("No grades to publish");
+            }
+            for (AssessmentResult r : unpublished) {
+                r.setIsPublished(true);
+                assessmentResultRepository.save(r);
+            }
+        } else {
+            for (AssessmentResult r : results) {
+                r.setIsPublished(false);
+                assessmentResultRepository.save(r);
+            }
+        }
     }
 
     public CriteriaGradeResultDto getGradeDecomposition(UUID courseId, UUID postId, UUID solutionId, UUID userId) {
@@ -222,55 +260,246 @@ public class MultiCriteriaGradingService {
         CourseMember member = courseMemberRepository.findByCourseIdAndUserId(courseId, userId).orElseThrow();
         boolean isTeacher = member.getRole() == CourseRole.TEACHER;
 
+        AssessmentResult result = assessmentResultRepository.findBySolutionId(solutionId).orElse(null);
+
         if (!isTeacher) {
             if (!solution.getStudent().getId().equals(userId)) {
                 throw new ForbiddenException("You can only view your own grade decomposition");
             }
-            if (!Boolean.TRUE.equals(config.getResultsVisible())) {
+            if (result == null || !Boolean.TRUE.equals(result.getIsPublished())) {
                 throw new ForbiddenException("Grade decomposition is not yet published by the teacher");
             }
         }
 
-        List<CriterionGrade> grades = criterionGradeRepository.findBySolutionId(solutionId);
-        Map<UUID, CriterionGrade> gradeByCriterion = grades.stream()
-                .collect(Collectors.toMap(g -> g.getCriterion().getId(), g -> g));
+        if (result != null) {
+            return toResultDto(result);
+        }
+
+        // Live preview for teacher when no assessment result exists yet
+        List<CriterionGradeResultItemDto> items = config.getCriteria().stream()
+                .sorted(Comparator.comparingInt(Criterion::getSortOrder))
+                .map(c -> CriterionGradeResultItemDto.builder()
+                        .criterion(toCriterionConfigDto(c))
+                        .value(BigDecimal.ZERO)
+                        .computedPoints(BigDecimal.ZERO)
+                        .build())
+                .toList();
+
+        List<ModifierEffectDto> effects = new ArrayList<>();
+        BigDecimal modifierDelta = computeModifierDelta(config, solution, effects);
+
+        return CriteriaGradeResultDto.builder()
+                .solutionId(solutionId)
+                .criteriaGrades(items)
+                .modifierEffects(effects)
+                .basicScore(BigDecimal.ZERO)
+                .modifierDelta(modifierDelta)
+                .finalScore(modifierDelta.max(BigDecimal.ZERO).min(config.getMaxGrade()))
+                .maxGrade(config.getMaxGrade())
+                .isPublished(false)
+                .gradedAt(null)
+                .build();
+    }
+
+    @Transactional
+    public CriteriaGradeResultDto recalculateAssessment(UUID courseId, UUID postId, UUID solutionId, UUID userId) {
+        ensureTeacher(courseId, userId);
+        requireTaskPostInCourse(courseId, postId);
+        Solution solution = requireSolutionInPost(postId, solutionId);
+        GradingConfig config = requireGradingConfig(postId);
+
+        AssessmentResult result = assessmentResultRepository.findBySolutionId(solutionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Assessment result not found for this solution"));
+
+        GradingConfigVersion version = findOrCreateConfigVersion(config);
+
+        // Map old grades by title for transfer
+        Map<String, AssessmentCriterionGrade> oldByTitle = result.getCriterionGrades().stream()
+                .collect(Collectors.toMap(
+                        g -> g.getVersionedCriterion().getTitle(),
+                        g -> g,
+                        (a, b) -> a));
+
+        result.setConfigVersion(version);
+        result.getCriterionGrades().clear();
+        result.setIsPublished(false);
+
+        Map<String, VersionedCriterion> versionedByTitle = version.getCriteria().stream()
+                .collect(Collectors.toMap(VersionedCriterion::getTitle, c -> c));
+
+        for (VersionedCriterion vc : version.getCriteria().stream().sorted(Comparator.comparingInt(VersionedCriterion::getSortOrder)).toList()) {
+            AssessmentCriterionGrade old = oldByTitle.get(vc.getTitle());
+            BigDecimal value = old != null ? old.getValue() : BigDecimal.ZERO;
+            String comment = old != null ? old.getComment() : null;
+
+            // Validate value against new criterion rules
+            vc.validateValue(value);
+
+            AssessmentCriterionGrade acg = AssessmentCriterionGrade.builder()
+                    .assessmentResult(result)
+                    .versionedCriterion(vc)
+                    .value(value)
+                    .comment(comment)
+                    .build();
+            result.getCriterionGrades().add(acg);
+        }
+
+        BigDecimal basicScore = result.computeBasicScore();
+        List<ModifierEffectDto> effects = new ArrayList<>();
+        BigDecimal modifierDelta = computeModifierDelta(version, solution, effects);
+        BigDecimal rawFinal = basicScore.add(modifierDelta);
+        BigDecimal finalScore = rawFinal.max(BigDecimal.ZERO).min(version.getMaxGrade());
+
+        result.setBasicScore(basicScore);
+        result.setModifierDelta(modifierDelta);
+        result.setFinalScore(finalScore);
+        result.setGradedAt(Instant.now());
+
+        AssessmentResult saved = assessmentResultRepository.save(result);
+
+        solution.setGrade(finalScore.setScale(0, RoundingMode.HALF_UP).intValue());
+        solution.setStatus(SolutionStatus.GRADED);
+        solution.setGradedAt(Instant.now());
+        solutionRepository.save(solution);
+
+        return toResultDto(saved);
+    }
+
+    private GradingConfigVersion findOrCreateConfigVersion(GradingConfig config) {
+        List<Criterion> currentCriteria = criterionRepository.findByGradingConfigIdOrderBySortOrderAsc(config.getId());
+
+        Optional<GradingConfigVersion> latestOpt = gradingConfigVersionRepository
+                .findTopByPostIdOrderByVersionNumberDesc(config.getPost().getId());
+
+        if (latestOpt.isPresent()) {
+            GradingConfigVersion latest = latestOpt.get();
+            List<VersionedCriterion> versioned = versionedCriterionRepository
+                    .findByConfigVersionIdOrderBySortOrderAsc(latest.getId());
+
+            if (versionsMatch(currentCriteria, versioned, config, latest)) {
+                return latest;
+            }
+
+            GradingConfigVersion next = GradingConfigVersion.builder()
+                    .post(config.getPost())
+                    .versionNumber(latest.getVersionNumber() + 1)
+                    .maxGrade(config.getMaxGrade())
+                    .modifiersJson(config.getModifiersJson())
+                    .build();
+
+            List<VersionedCriterion> newVersioned = currentCriteria.stream()
+                    .map(c -> VersionedCriterion.builder()
+                            .type(c.getType())
+                            .title(c.getTitle())
+                            .maxPoints(c.getMaxPoints())
+                            .weight(c.getWeight())
+                            .sortOrder(c.getSortOrder())
+                            .build())
+                    .toList();
+            next.replaceCriteria(newVersioned);
+            return gradingConfigVersionRepository.save(next);
+        }
+
+        GradingConfigVersion first = GradingConfigVersion.builder()
+                .post(config.getPost())
+                .versionNumber(1)
+                .maxGrade(config.getMaxGrade())
+                .modifiersJson(config.getModifiersJson())
+                .build();
+
+        List<VersionedCriterion> newVersioned = currentCriteria.stream()
+                .map(c -> VersionedCriterion.builder()
+                        .type(c.getType())
+                        .title(c.getTitle())
+                        .maxPoints(c.getMaxPoints())
+                        .weight(c.getWeight())
+                        .sortOrder(c.getSortOrder())
+                        .build())
+                .toList();
+        first.replaceCriteria(newVersioned);
+        return gradingConfigVersionRepository.save(first);
+    }
+
+    private boolean versionsMatch(List<Criterion> current, List<VersionedCriterion> versioned,
+                                  GradingConfig config, GradingConfigVersion version) {
+        if (!config.getMaxGrade().equals(version.getMaxGrade())) {
+            return false;
+        }
+        if (!Objects.equals(config.getModifiersJson(), version.getModifiersJson())) {
+            return false;
+        }
+        if (current.size() != versioned.size()) {
+            return false;
+        }
+        for (int i = 0; i < current.size(); i++) {
+            Criterion c = current.get(i);
+            VersionedCriterion v = versioned.get(i);
+            if (!Objects.equals(c.getType(), v.getType())
+                    || !Objects.equals(c.getTitle(), v.getTitle())
+                    || !Objects.equals(c.getMaxPoints(), v.getMaxPoints())
+                    || !Objects.equals(c.getWeight(), v.getWeight())
+                    || !Objects.equals(c.getSortOrder(), v.getSortOrder())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private CriteriaGradeResultDto toResultDto(AssessmentResult result) {
+        GradingConfigVersion version = result.getConfigVersion();
+        List<VersionedCriterion> criteria = version.getCriteria().stream()
+                .sorted(Comparator.comparingInt(VersionedCriterion::getSortOrder))
+                .toList();
+
+        Map<UUID, AssessmentCriterionGrade> gradeByCriterion = result.getCriterionGrades().stream()
+                .collect(Collectors.toMap(g -> g.getVersionedCriterion().getId(), g -> g));
 
         List<CriterionGradeResultItemDto> items = new ArrayList<>();
-        for (Criterion criterion : config.getCriteria()) {
-            CriterionGrade grade = gradeByCriterion.get(criterion.getId());
+        for (VersionedCriterion vc : criteria) {
+            AssessmentCriterionGrade grade = gradeByCriterion.get(vc.getId());
             BigDecimal value = grade != null ? grade.getValue() : BigDecimal.ZERO;
-            BigDecimal computed = criterion.computePoints(value);
+            BigDecimal computed = vc.computePoints(value);
             items.add(CriterionGradeResultItemDto.builder()
-                    .criterion(toCriterionConfigDto(criterion))
+                    .criterion(CriterionConfigDto.builder()
+                            .id(vc.getId())
+                            .type(vc.getType())
+                            .title(vc.getTitle())
+                            .maxPoints(vc.getMaxPoints())
+                            .weight(vc.getWeight())
+                            .sortOrder(vc.getSortOrder())
+                            .build())
                     .value(value)
                     .computedPoints(computed)
                     .comment(grade != null ? grade.getComment() : null)
                     .build());
         }
 
-        BigDecimal basicScore = config.computeBasicScore(grades);
-
         List<ModifierEffectDto> effects = new ArrayList<>();
-        BigDecimal modifierDelta = computeModifierDelta(config, solution, effects);
+        BigDecimal modifierDelta = result.getModifierDelta();
+        if (modifierDelta == null) {
+            modifierDelta = computeModifierDelta(version, result.getSolution(), effects);
+        } else {
+            // Recompute effects for display only (delta is already stored)
+            computeModifierDelta(version, result.getSolution(), effects);
+        }
 
-        BigDecimal rawFinal = basicScore.add(modifierDelta);
-        BigDecimal finalScore = rawFinal.max(BigDecimal.ZERO).min(config.getMaxGrade());
-
-        Instant latestGradedAt = grades.stream()
-                .map(CriterionGrade::getUpdatedAt)
-                .max(Comparator.naturalOrder())
-                .orElse(null);
+        BigDecimal basicScore = result.getBasicScore() != null ? result.getBasicScore() : result.computeBasicScore();
+        BigDecimal finalScore = result.getFinalScore();
+        if (finalScore == null) {
+            BigDecimal rawFinal = basicScore.add(modifierDelta);
+            finalScore = rawFinal.max(BigDecimal.ZERO).min(version.getMaxGrade());
+        }
 
         return CriteriaGradeResultDto.builder()
-                .solutionId(solutionId)
+                .solutionId(result.getSolution().getId())
                 .criteriaGrades(items)
                 .modifierEffects(effects)
                 .basicScore(basicScore)
                 .modifierDelta(modifierDelta)
                 .finalScore(finalScore)
-                .maxGrade(config.getMaxGrade())
-                .isPublished(config.getResultsVisible())
-                .gradedAt(latestGradedAt)
+                .maxGrade(version.getMaxGrade())
+                .isPublished(result.getIsPublished())
+                .gradedAt(result.getGradedAt())
                 .build();
     }
 
@@ -281,6 +510,35 @@ public class MultiCriteriaGradingService {
         ModifierConfigDto modifiers;
         try {
             modifiers = objectMapper.readValue(config.getModifiersJson(), ModifierConfigDto.class);
+        } catch (JsonProcessingException e) {
+            return BigDecimal.ZERO;
+        }
+
+        BigDecimal total = BigDecimal.ZERO;
+
+        DeadlineModifierDto deadline = modifiers.getDeadlines();
+        if (deadline != null && Boolean.TRUE.equals(deadline.getEnabled())) {
+            BigDecimal delta = computeDeadlineDelta(deadline, solution.getSubmittedAt());
+            if (delta.compareTo(BigDecimal.ZERO) != 0) {
+                effects.add(ModifierEffectDto.builder()
+                        .modifierType("DEADLINE")
+                        .description(delta.compareTo(BigDecimal.ZERO) > 0 ? "Early submission bonus" : "Late submission penalty")
+                        .delta(delta)
+                        .build());
+                total = total.add(delta);
+            }
+        }
+
+        return total;
+    }
+
+    private BigDecimal computeModifierDelta(GradingConfigVersion version, Solution solution, List<ModifierEffectDto> effects) {
+        if (version.getModifiersJson() == null || version.getModifiersJson().isBlank()) {
+            return BigDecimal.ZERO;
+        }
+        ModifierConfigDto modifiers;
+        try {
+            modifiers = objectMapper.readValue(version.getModifiersJson(), ModifierConfigDto.class);
         } catch (JsonProcessingException e) {
             return BigDecimal.ZERO;
         }

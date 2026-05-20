@@ -227,4 +227,30 @@ public class MultiCriteriaGradingController {
         CriteriaGradeResultDto result = gradingService.upsertCriteriaGrades(courseId, postId, solutionId, request, principal.getId());
         return ResponseEntity.ok(result);
     }
+
+    @PostMapping("/solutions/{solutionId}/recalculate")
+    @Operation(
+            summary = "Recalculate assessment for a solution using the current grading config (teacher only)",
+            description = "Creates a new config version snapshot and recomputes the final score. " +
+                    "The assessment becomes unpublished and must be published again.",
+            operationId = "recalculateAssessment",
+            security = @SecurityRequirement(name = "bearerAuth"),
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Assessment recalculated",
+                            content = @Content(schema = @Schema(implementation = CriteriaGradeResultDto.class))),
+                    @ApiResponse(responseCode = "403", description = "Insufficient permissions",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "404", description = "Resource not found",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            }
+    )
+    public ResponseEntity<CriteriaGradeResultDto> recalculateAssessment(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable UUID courseId,
+            @PathVariable UUID postId,
+            @PathVariable UUID solutionId) {
+
+        CriteriaGradeResultDto result = gradingService.recalculateAssessment(courseId, postId, solutionId, principal.getId());
+        return ResponseEntity.ok(result);
+    }
 }

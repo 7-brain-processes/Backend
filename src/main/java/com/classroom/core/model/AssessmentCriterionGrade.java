@@ -10,15 +10,15 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "criteria_grades", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"solution_id", "criterion_id"})
+@Table(name = "assessment_criterion_grades", uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"assessment_result_id", "versioned_criterion_id"})
 })
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class CriterionGrade {
+public class AssessmentCriterionGrade {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -26,12 +26,12 @@ public class CriterionGrade {
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "solution_id", nullable = false)
-    private Solution solution;
+    @JoinColumn(name = "assessment_result_id", nullable = false)
+    private AssessmentResult assessmentResult;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "criterion_id", nullable = false)
-    private Criterion criterion;
+    @JoinColumn(name = "versioned_criterion_id", nullable = false)
+    private VersionedCriterion versionedCriterion;
 
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal value;

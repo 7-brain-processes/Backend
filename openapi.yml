@@ -2300,6 +2300,29 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /courses/{courseId}/posts/{postId}/solutions/{solutionId}/recalculate:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+      - $ref: "#/components/parameters/SolutionId"
+
+    post:
+      tags: [Multi-Criteria Grading]
+      summary: Recalculate assessment using current grading config (teacher only)
+      description: Creates a new config version snapshot and recomputes the final score. The assessment becomes unpublished.
+      operationId: recalculateAssessment
+      responses:
+        "200":
+          description: Assessment recalculated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CriteriaGradeResultDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /courses/{courseId}/posts/{postId}/solutions/my/grade-decomposition:
     parameters:
       - $ref: "#/components/parameters/CourseId"

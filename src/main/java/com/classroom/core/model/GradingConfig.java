@@ -8,11 +8,8 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "grading_configs")
@@ -69,23 +66,5 @@ public class GradingConfig {
         }
     }
 
-    /**
-     * Computes the basic score by asking each criterion in the aggregate
-     * to calculate its own contribution.
-     */
-    public BigDecimal computeBasicScore(List<CriterionGrade> grades) {
-        Map<UUID, BigDecimal> valueByCriterion = grades.stream()
-                .collect(Collectors.toMap(
-                        g -> g.getCriterion().getId(),
-                        CriterionGrade::getValue,
-                        (a, b) -> a));
 
-        return criteria.stream()
-                .sorted(Comparator.comparingInt(Criterion::getSortOrder))
-                .map(c -> {
-                    BigDecimal value = valueByCriterion.getOrDefault(c.getId(), BigDecimal.ZERO);
-                    return c.computePoints(value);
-                })
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-    }
 }
