@@ -171,13 +171,14 @@ class MultiCriteriaGradingControllerIT {
             ));
 
             HttpEntity<UpsertGradingConfigRequest> configEntity = new HttpEntity<>(configReq, bearerHeaders(tToken));
-            restTemplate.exchange(configBase(c.getId(), task.getId()), HttpMethod.PUT, configEntity, GradingConfigDto.class);
+            var configResp = restTemplate.exchange(configBase(c.getId(), task.getId()), HttpMethod.PUT, configEntity, GradingConfigDto.class);
+            UUID criterionId = configResp.getBody().getCriteria().get(0).getId();
 
             // Submit criteria grades
             CriteriaGradeSubmissionDto gradeReq = CriteriaGradeSubmissionDto.builder()
                     .grades(List.of(
                             CriterionGradeEntryDto.builder()
-                                    .criterionId(gradingConfigRepository.findByPostId(task.getId()).get().getCriteria().get(0).getId())
+                                    .criterionId(criterionId)
                                     .value(new BigDecimal("40"))
                                     .build()
                     ))
