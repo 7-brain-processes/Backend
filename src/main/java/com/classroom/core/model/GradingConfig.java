@@ -8,6 +8,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
@@ -66,5 +67,56 @@ public class GradingConfig {
         }
     }
 
+    public GradingConfigVersion snapshotVersion(int versionNumber, List<Criterion> criteria) {
+        GradingConfigVersion version = GradingConfigVersion.builder()
+                .post(this.post)
+                .versionNumber(versionNumber)
+                .maxGrade(this.maxGrade)
+                .modifiersJson(this.modifiersJson)
+                .build();
 
+        List<VersionedCriterion> versioned = criteria.stream()
+                .sorted(Comparator.comparingInt(Criterion::getSortOrder))
+                .map(c -> VersionedCriterion.builder()
+                        .configVersion(version)
+                        .type(c.getType())
+                        .title(c.getTitle())
+                        .maxPoints(c.getMaxPoints())
+                        .weight(c.getWeight())
+                        .sortOrder(c.getSortOrder())
+                        .build())
+                .toList();
+        version.replaceCriteria(versioned);
+        return version;
+    }
+
+    public boolean matchesVersion(GradingConfigVersion version, List<Criterion> criteria) {
+        if (!this.maxGrade.equals(version.getMaxGrade())) {
+            return false;
+        }
+        if (!java.util.Objects.equals(this.modifiersJson, version.getModifiersJson())) {
+            return false;
+        }
+        List<Criterion> sortedCriteria = criteria.stream()
+                .sorted(Comparator.comparingInt(Criterion::getSortOrder))
+                .toList();
+        List<VersionedCriterion> sortedVersioned = version.getCriteria().stream()
+                .sorted(Comparator.comparingInt(VersionedCriterion::getSortOrder))
+                .toList();
+        if (sortedCriteria.size() != sortedVersioned.size()) {
+            return false;
+        }
+        for (int i = 0; i < sortedCriteria.size(); i++) {
+            Criterion c = sortedCriteria.get(i);
+            VersionedCriterion v = sortedVersioned.get(i);
+            if (!java.util.Objects.equals(c.getType(), v.getType())
+                    || !java.util.Objects.equals(c.getTitle(), v.getTitle())
+                    || !java.util.Objects.equals(c.getMaxPoints(), v.getMaxPoints())
+                    || !java.util.Objects.equals(c.getWeight(), v.getWeight())
+                    || !java.util.Objects.equals(c.getSortOrder(), v.getSortOrder())) {
+                return false;
+            }
+        }
+        return true;
+    }
 }

@@ -7,6 +7,8 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import com.classroom.core.event.AssessmentPublishedEvent;
+import com.classroom.core.event.DomainEvent;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -67,6 +69,10 @@ public class AssessmentResult {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
+    @Transient
+    @Builder.Default
+    private List<DomainEvent> domainEvents = new ArrayList<>();
+
     public BigDecimal computeBasicScore() {
         Map<UUID, BigDecimal> valueByCriterion = criterionGrades.stream()
                 .collect(Collectors.toMap(
@@ -81,5 +87,53 @@ public class AssessmentResult {
                     return c.computePoints(value);
                 })
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    public Score computeFinalScore(ModifierConfig modifierConfig) {
+        BigDecimal basic = computeBasicScore();
+        BigDecimal modifierDelta = modifierConfig != null
+                ? modifierConfig.computeTotalDelta(solution.getSubmittedAt())
+                : BigDecimal.ZERO;
+        return Score.of(basic.add(modifierDelta), configVersion.getMaxGrade()).clamp();
+    }
+
+    public void assess(List<AssessmentCriterionGrade> grades, ModifierConfig modifierConfig) {
+        replaceCriterionGrades(grades);
+        BigDecimal basic = computeBasicScore();
+        BigDecimal delta = modifierConfig != null
+                ? modifierConfig.computeTotalDelta(solution.getSubmittedAt())
+                : BigDecimal.ZERO;
+        Score score = Score.of(basic.add(delta), configVersion.getMaxGrade()).clamp();
+        this.basicScore = basic;
+        this.modifierDelta = delta;
+        this.finalScore = score.getValue();
+        this.gradedAt = Instant.now();
+    }
+
+    public void replaceCriterionGrades(List<AssessmentCriterionGrade> grades) {
+        List<AssessmentCriterionGrade> toAdd = new ArrayList<>(grades);
+        this.criterionGrades.clear();
+        for (AssessmentCriterionGrade g : toAdd) {
+            g.setAssessmentResult(this);
+            this.criterionGrades.add(g);
+        }
+    }
+
+    public void publish() {
+        if (Boolean.TRUE.equals(this.isPublished)) {
+            throw new IllegalStateException("Assessment is already published");
+        }
+        this.isPublished = true;
+        domainEvents.add(new AssessmentPublishedEvent(this.id, this.solution.getId(), Instant.now()));
+    }
+
+    public void unpublish() {
+        this.isPublished = false;
+    }
+
+    public List<DomainEvent> pullDomainEvents() {
+        List<DomainEvent> events = new ArrayList<>(domainEvents);
+        domainEvents.clear();
+        return events;
     }
 }

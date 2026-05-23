@@ -8,6 +8,7 @@ import com.classroom.core.model.*;
 import com.classroom.core.repository.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -47,15 +48,35 @@ class MultiCriteriaGradingServiceTest {
     @Mock
     private CourseRepository courseRepository;
     @Mock
-    private ObjectMapper objectMapper;
+    private ApplicationEventPublisher eventPublisher;
 
-    @InjectMocks
+    private final ObjectMapper objectMapper = new ObjectMapper();
+    private GradingGuard guard;
+    private GradingDtoMapper mapper;
     private MultiCriteriaGradingService gradingService;
 
     private final UUID courseId = UUID.randomUUID();
     private final UUID postId = UUID.randomUUID();
     private final UUID userId = UUID.randomUUID();
     private final UUID solutionId = UUID.randomUUID();
+
+    @org.junit.jupiter.api.BeforeEach
+    void setUp() {
+        guard = new GradingGuard(courseRepository, courseMemberRepository, postRepository, solutionRepository, gradingConfigRepository);
+        mapper = new GradingDtoMapper(objectMapper);
+        gradingService = new MultiCriteriaGradingService(
+                gradingConfigRepository,
+                criterionRepository,
+                gradingConfigVersionRepository,
+                versionedCriterionRepository,
+                assessmentResultRepository,
+                assessmentCriterionGradeRepository,
+                objectMapper,
+                guard,
+                mapper,
+                eventPublisher
+        );
+    }
 
     @Test
     void getGradingConfig_shouldReturnDto_whenConfigExists() {
@@ -148,7 +169,6 @@ class MultiCriteriaGradingServiceTest {
                 .thenReturn(Optional.empty());
         when(gradingConfigVersionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(assessmentResultRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        when(solutionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         CriteriaGradeSubmissionDto request = CriteriaGradeSubmissionDto.builder()
                 .grades(List.of(
@@ -201,7 +221,6 @@ class MultiCriteriaGradingServiceTest {
                 .thenReturn(Optional.empty());
         when(gradingConfigVersionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(assessmentResultRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        when(solutionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         CriteriaGradeSubmissionDto request = CriteriaGradeSubmissionDto.builder()
                 .grades(List.of(
@@ -252,7 +271,6 @@ class MultiCriteriaGradingServiceTest {
                 .thenReturn(Optional.empty());
         when(gradingConfigVersionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(assessmentResultRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        when(solutionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         CriteriaGradeSubmissionDto request = CriteriaGradeSubmissionDto.builder()
                 .grades(List.of(
@@ -466,10 +484,7 @@ class MultiCriteriaGradingServiceTest {
                 .thenReturn(List.of(criterion));
         when(gradingConfigVersionRepository.findTopByPostIdOrderByVersionNumberDesc(postId))
                 .thenReturn(Optional.of(oldVersion));
-        when(versionedCriterionRepository.findByConfigVersionIdOrderBySortOrderAsc(oldVersion.getId()))
-                .thenReturn(List.of(oldVc));
         when(assessmentResultRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        when(solutionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         CriteriaGradeResultDto dto = gradingService.recalculateAssessment(courseId, postId, solutionId, userId);
 
