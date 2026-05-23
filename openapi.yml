@@ -2272,23 +2272,18 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /courses/{courseId}/posts/{postId}/solutions/{solutionId}/criteria-grades/publish:
+  /courses/{courseId}/posts/{postId}/criteria-grades/publish:
     parameters:
       - $ref: "#/components/parameters/CourseId"
       - $ref: "#/components/parameters/PostId"
-      - $ref: "#/components/parameters/SolutionId"
 
     post:
       tags: [Multi-Criteria Grading]
       summary: Publish criteria grades so students can view them (teacher only)
       operationId: publishCriteriaGrades
       responses:
-        "200":
+        "204":
           description: Grades published
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/CriteriaGradeResultDto"
         "400":
           description: No grades to publish
           content:
