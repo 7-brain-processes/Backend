@@ -1,6 +1,7 @@
 package com.classroom.core.service;
 
 import com.classroom.core.dto.grading.*;
+import com.classroom.core.dto.peerreview.PeerReviewConfigDto;
 import com.classroom.core.model.*;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -23,6 +24,10 @@ public class GradingDtoMapper {
     private final ObjectMapper objectMapper;
 
     public GradingConfigDto toConfigDto(GradingConfig config) {
+        return toConfigDto(config, true);
+    }
+
+    public GradingConfigDto toConfigDto(GradingConfig config, boolean isTeacher) {
         ModifierConfigDto modifiers = null;
         if (config.getModifiersJson() != null && !config.getModifiersJson().isBlank()) {
             try {
@@ -32,12 +37,13 @@ public class GradingDtoMapper {
             }
         }
 
+        final boolean ft = isTeacher;
         return GradingConfigDto.builder()
                 .postId(config.getPost().getId())
                 .maxGrade(config.getMaxGrade())
                 .criteria(config.getCriteria().stream()
                         .sorted(Comparator.comparingInt(Criterion::getSortOrder))
-                        .map(this::toCriterionConfigDto)
+                        .map(c -> toCriterionConfigDto(c, ft))
                         .toList())
                 .modifiers(modifiers)
                 .resultsVisible(config.getResultsVisible())
@@ -47,6 +53,14 @@ public class GradingDtoMapper {
     }
 
     public CriterionConfigDto toCriterionConfigDto(Criterion criterion) {
+        return toCriterionConfigDto(criterion, true);
+    }
+
+    public CriterionConfigDto toCriterionConfigDto(Criterion criterion, boolean isTeacher) {
+        PeerReviewConfigDto peerReviewConfigDto = null;
+        if (criterion.getType() == CriterionType.PEER_REVIEW && criterion.getPeerReviewConfig() != null) {
+            peerReviewConfigDto = toPeerReviewConfigDto(criterion.getPeerReviewConfig(), isTeacher);
+        }
         return CriterionConfigDto.builder()
                 .id(criterion.getId())
                 .type(criterion.getType())
@@ -54,6 +68,18 @@ public class GradingDtoMapper {
                 .maxPoints(criterion.getMaxPoints())
                 .weight(criterion.getWeight())
                 .sortOrder(criterion.getSortOrder())
+                .peerReviewConfig(peerReviewConfigDto)
+                .build();
+    }
+
+    private PeerReviewConfigDto toPeerReviewConfigDto(PeerReviewConfig config, boolean isTeacher) {
+        return PeerReviewConfigDto.builder()
+                .id(config.getId())
+                .reviewersCount(config.getReviewersCount())
+                .scoringStrategy(config.getScoringStrategy())
+                .firstDeadline(config.getFirstDeadline())
+                .secondDeadline(isTeacher ? config.getSecondDeadline() : null)
+                .redistributionFactor(config.getRedistributionFactor())
                 .build();
     }
 

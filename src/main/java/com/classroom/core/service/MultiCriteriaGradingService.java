@@ -36,6 +36,7 @@ public class MultiCriteriaGradingService {
     private final GradingGuard guard;
     private final GradingDtoMapper mapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final PeerReviewService peerReviewService;
 
     public GradingConfigDto getGradingConfig(UUID courseId, UUID postId, UUID userId) {
         guard.requireMember(courseId, userId);
@@ -45,7 +46,8 @@ public class MultiCriteriaGradingService {
         if (config == null) {
             return GradingConfigDto.builder().postId(postId).build();
         }
-        return mapper.toConfigDto(config);
+        boolean isTeacher = guard.isTeacher(courseId, userId);
+        return mapper.toConfigDto(config, isTeacher);
     }
 
     @Transactional
@@ -90,6 +92,16 @@ public class MultiCriteriaGradingService {
         config.replaceCriteria(newCriteria);
 
         GradingConfig saved = gradingConfigRepository.save(config);
+
+        List<Criterion> savedCriteria = criterionRepository.findByGradingConfigIdOrderBySortOrderAsc(saved.getId());
+        List<CriterionConfigDto> criterionDtos = request.getCriteria();
+        for (int i = 0; i < criterionDtos.size() && i < savedCriteria.size(); i++) {
+            CriterionConfigDto dto = criterionDtos.get(i);
+            if (dto.getType() == CriterionType.PEER_REVIEW && dto.getPeerReviewConfigRequest() != null) {
+                peerReviewService.createOrUpdateConfig(savedCriteria.get(i), dto.getPeerReviewConfigRequest());
+            }
+        }
+
         return mapper.toConfigDto(saved);
     }
 
@@ -272,15 +284,17 @@ public class MultiCriteriaGradingService {
     }
 
     private void validateGradeSubmission(List<Criterion> criteria, CriteriaGradeSubmissionDto request) {
-        Map<UUID, Criterion> criterionMap = criteria.stream()
-                .collect(Collectors.toMap(Criterion::getId, c -> c));
+       Set<UUID> teacherRequiredIds = criteria.stream()
+                .filter(c -> c.getType() != CriterionType.PEER_REVIEW)
+                .map(Criterion::getId)
+                .collect(Collectors.toSet());
 
         Set<UUID> submittedCriterionIds = request.getGrades().stream()
                 .map(CriterionGradeEntryDto::getCriterionId)
                 .collect(Collectors.toSet());
 
-        if (!submittedCriterionIds.equals(criterionMap.keySet())) {
-            throw new BadRequestException("Grades must be submitted for exactly the configured criteria");
+        if (!submittedCriterionIds.equals(teacherRequiredIds)) {
+            throw new BadRequestException("Grades must be submitted for exactly the non-peer-review criteria");
         }
     }
 
@@ -289,6 +303,7 @@ public class MultiCriteriaGradingService {
                                                                   GradingConfigVersion version,
                                                                   AssessmentResult result) {
         Map<UUID, Criterion> criterionMap = criteria.stream()
+                .filter(c -> c.getType() != CriterionType.PEER_REVIEW)
                 .collect(Collectors.toMap(Criterion::getId, c -> c));
         Map<String, VersionedCriterion> versionedByTitle = version.getCriteria().stream()
                 .collect(Collectors.toMap(VersionedCriterion::getTitle, c -> c));
@@ -296,6 +311,9 @@ public class MultiCriteriaGradingService {
         List<AssessmentCriterionGrade> grades = new ArrayList<>();
         for (CriterionGradeEntryDto entry : request.getGrades()) {
             Criterion criterion = criterionMap.get(entry.getCriterionId());
+            if (criterion == null) {
+                throw new BadRequestException("Unknown criterion id: " + entry.getCriterionId());
+            }
             criterion.validateValue(entry.getValue());
 
             VersionedCriterion vc = versionedByTitle.get(criterion.getTitle());

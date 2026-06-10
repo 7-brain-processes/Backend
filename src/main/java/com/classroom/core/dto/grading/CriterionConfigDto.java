@@ -1,5 +1,7 @@
 package com.classroom.core.dto.grading;
 
+import com.classroom.core.dto.peerreview.PeerReviewConfigDto;
+import com.classroom.core.dto.peerreview.PeerReviewConfigRequest;
 import com.classroom.core.model.CriterionType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -20,4 +22,6 @@ public class CriterionConfigDto {
     private BigDecimal maxPoints;
     private BigDecimal weight;
     private Integer sortOrder;
+    private PeerReviewConfigDto peerReviewConfig;
+    private PeerReviewConfigRequest peerReviewConfigRequest;
 }

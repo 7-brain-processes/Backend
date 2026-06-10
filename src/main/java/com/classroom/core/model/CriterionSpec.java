@@ -50,6 +50,11 @@ public class CriterionSpec {
                     }
                 }
             }
+            case PEER_REVIEW -> {
+                if (value.compareTo(BigDecimal.ZERO) < 0 || value.compareTo(maxPoints) > 0) {
+                    throw new BadRequestException("PEER_REVIEW value must be between 0 and " + maxPoints);
+                }
+            }
         }
     }
 
@@ -60,6 +65,7 @@ public class CriterionSpec {
             case PERCENTAGE -> maxPoints.multiply(value).multiply(effectiveWeight)
                     .divide(new BigDecimal("100"), 10, RoundingMode.HALF_UP);
             case POINTS -> value.multiply(effectiveWeight);
+            case PEER_REVIEW -> value.multiply(effectiveWeight);
         };
     }
 }

@@ -42,6 +42,9 @@ public class Criterion {
     @Builder.Default
     private Integer sortOrder = 0;
 
+    @OneToOne(mappedBy = "criterion", fetch = FetchType.LAZY)
+    private PeerReviewConfig peerReviewConfig;
+
     public CriterionSpec toSpec() {
         return new CriterionSpec(type, title, maxPoints, weight, sortOrder);
     }

@@ -119,6 +119,25 @@ public class AssessmentResult {
         }
     }
 
+    public void applyPeerReviewGrade(VersionedCriterion peerReviewCriterion, BigDecimal value,
+                                     ModifierConfig modifierConfig) {
+        criterionGrades.removeIf(g -> g.getVersionedCriterion().getType() == CriterionType.PEER_REVIEW);
+        AssessmentCriterionGrade grade = AssessmentCriterionGrade.builder()
+                .assessmentResult(this)
+                .versionedCriterion(peerReviewCriterion)
+                .value(value)
+                .build();
+        criterionGrades.add(grade);
+        BigDecimal basic = computeBasicScore();
+        BigDecimal delta = modifierConfig != null
+                ? modifierConfig.computeTotalDelta(solution.getSubmittedAt())
+                : BigDecimal.ZERO;
+        Score score = Score.of(basic.add(delta), configVersion.getMaxGrade()).clamp();
+        this.basicScore = basic;
+        this.modifierDelta = delta;
+        this.finalScore = score.getValue();
+    }
+
     public void publish() {
         if (Boolean.TRUE.equals(this.isPublished)) {
             throw new IllegalStateException("Assessment is already published");
