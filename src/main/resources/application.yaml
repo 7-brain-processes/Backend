@@ -27,6 +27,3 @@ jwt:
 app:
   storage:
     path: ${STORAGE_PATH:./uploads}
-
-cors:
-  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
