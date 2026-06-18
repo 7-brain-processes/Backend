@@ -72,7 +72,7 @@ public class GradingDtoMapper {
                 .build();
     }
 
-    private PeerReviewConfigDto toPeerReviewConfigDto(PeerReviewConfig config, boolean isTeacher) {
+    public PeerReviewConfigDto toPeerReviewConfigDto(PeerReviewConfig config, boolean isTeacher) {
         return PeerReviewConfigDto.builder()
                 .id(config.getId())
                 .reviewersCount(config.getReviewersCount())
@@ -80,6 +80,11 @@ public class GradingDtoMapper {
                 .firstDeadline(config.getFirstDeadline())
                 .secondDeadline(isTeacher ? config.getSecondDeadline() : null)
                 .redistributionFactor(config.getRedistributionFactor())
+                .missedReviewPenalty(config.getMissedReviewPenalty())
+                .reviewMode(config.getReviewMode())
+                .usageType(config.getUsageType())
+                .round1ClosedAt(isTeacher ? config.getRound1ClosedAt() : null)
+                .round2ClosedAt(isTeacher ? config.getRound2ClosedAt() : null)
                 .build();
     }
 

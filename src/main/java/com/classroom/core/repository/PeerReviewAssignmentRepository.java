@@ -28,4 +28,13 @@ public interface PeerReviewAssignmentRepository extends JpaRepository<PeerReview
                                             @Param("status") PeerReviewAssignmentStatus status);
 
     boolean existsByReviewerUserIdAndRevieweeSolutionId(UUID reviewerUserId, UUID revieweeSolutionId);
+
+    List<PeerReviewAssignment> findByPeerReviewConfigIdAndRoundAndStatus(UUID peerReviewConfigId,
+                                                                         Integer round,
+                                                                         PeerReviewAssignmentStatus status);
+
+    List<PeerReviewAssignment> findByReviewerTeamIdAndPeerReviewConfigId(UUID reviewerTeamId,
+                                                                          UUID peerReviewConfigId);
+
+    boolean existsByPeerReviewConfigIdAndRound(UUID peerReviewConfigId, Integer round);
 }

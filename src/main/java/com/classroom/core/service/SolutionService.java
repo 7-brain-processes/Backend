@@ -55,15 +55,24 @@ public class SolutionService {
         if (post.getType() != PostType.TASK) {
             throw new BadRequestException("Can only submit solutions to task posts");
         }
-        if (solutionRepository.existsByPostIdAndStudentId(postId, userId)) {
-            throw new DuplicateResourceException("Solution already submitted");
-        }
         Solution solution = Solution.builder()
                 .post(post)
                 .student(member.getUser())
                 .text(request.getText())
                 .status(SolutionStatus.SUBMITTED)
                 .build();
+
+        if (post.getTeamFormationMode() != null && member.getTeam() != null) {
+            if (solutionRepository.existsByPostIdAndTeamId(postId, member.getTeam().getId())) {
+                throw new DuplicateResourceException("Team solution already submitted");
+            }
+            solution.setTeam(member.getTeam());
+        } else {
+            if (solutionRepository.existsByPostIdAndStudentId(postId, userId)) {
+                throw new DuplicateResourceException("Solution already submitted");
+            }
+        }
+
         return toDto(solutionRepository.save(solution));
     }
 

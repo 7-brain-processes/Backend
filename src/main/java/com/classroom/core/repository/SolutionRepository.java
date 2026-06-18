@@ -17,6 +17,8 @@ public interface SolutionRepository extends JpaRepository<Solution, UUID> {
 
     boolean existsByPostIdAndStudentId(UUID postId, UUID studentId);
 
+    boolean existsByPostIdAndTeamId(UUID postId, UUID teamId);
+
     List<Solution> findAllByPostId(UUID postId);
 
     List<Solution> findAllByPostIdAndStatusIn(UUID postId, Collection<SolutionStatus> statuses);

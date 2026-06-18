@@ -47,6 +47,10 @@ tags:
     description: >
       Assignment-level grading configuration (criteria and modifiers)
       and per-solution decomposed grade submission / viewing.
+  - name: Peer Review
+    description: Peer-to-peer review assignment distribution and submission.
+  - name: Notifications
+    description: User notifications
 
 security:
   - bearerAuth: []
@@ -2339,6 +2343,263 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /courses/{courseId}/posts/{postId}/peer-review/config:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    get:
+      tags: [Peer Review]
+      summary: Get peer review configuration
+      description: Returns the peer review configuration for the task.
+      operationId: getPeerReviewConfig
+      responses:
+        "200":
+          description: Peer review configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PeerReviewConfigDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/peer-review/distribute:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    post:
+      tags: [Peer Review]
+      summary: Distribute round-1 peer review assignments (teacher only)
+      description: Assigns reviewers to all submitted solutions. Any existing PENDING round-1 assignments are replaced.
+      operationId: distributeRound1
+      responses:
+        "204":
+          description: Assignments distributed
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/peer-review/distribute-round2:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    post:
+      tags: [Peer Review]
+      summary: Redistribute reviews for under-reviewed solutions (teacher only)
+      description: Creates round-2 assignments for solutions that did not receive the required number of completed reviews.
+      operationId: distributeRound2
+      responses:
+        "204":
+          description: Round-2 assignments created (or nothing to do)
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/peer-review/close-round1:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    post:
+      tags: [Peer Review]
+      summary: Close round 1 manually (teacher only)
+      description: Marks pending round-1 assignments as missed, applies penalties and triggers round-2 redistribution.
+      operationId: closeRound1
+      responses:
+        "204":
+          description: Round 1 closed
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/peer-review/close-round2:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    post:
+      tags: [Peer Review]
+      summary: Close round 2 manually (teacher only)
+      description: Identifies solutions that still lack required reviews after the second deadline.
+      operationId: closeRound2
+      responses:
+        "204":
+          description: Round 2 closed
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/peer-review/under-reviewed:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    get:
+      tags: [Peer Review]
+      summary: Get solutions with insufficient reviews (teacher only)
+      description: Returns works that have fewer completed reviews than required.
+      operationId: getUnderReviewedSolutions
+      responses:
+        "200":
+          description: List of under-reviewed solutions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UnderReviewedSolutionDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/peer-review/my-assignments:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    get:
+      tags: [Peer Review]
+      summary: Get peer review assignments for the current student
+      description: Returns all assignments where the authenticated user is the reviewer. Second deadline is never included.
+      operationId: getMyAssignments
+      responses:
+        "200":
+          description: List of assignments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PeerReviewAssignmentDto"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/peer-review/assignments/{assignmentId}:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+      - name: assignmentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    put:
+      tags: [Peer Review]
+      summary: Submit or update a peer review (student)
+      description: Student submits a grade and optional comment for an assigned solution. Editable until the first deadline.
+      operationId: submitPeerReview
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitPeerReviewRequest"
+      responses:
+        "200":
+          description: Review submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PeerReviewAssignmentDto"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /courses/{courseId}/posts/{postId}/peer-review/apply-grades:
+    parameters:
+      - $ref: "#/components/parameters/CourseId"
+      - $ref: "#/components/parameters/PostId"
+
+    post:
+      tags: [Peer Review]
+      summary: Apply computed peer review scores to all assessment results (teacher only)
+      description: Calculates the P2P score for each solution using the configured scoring strategy and writes it into the PEER_REVIEW criterion grade of each AssessmentResult.
+      operationId: applyPeerReviewGrades
+      responses:
+        "204":
+          description: Grades applied
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /notifications:
+    get:
+      tags: [Notifications]
+      summary: Get current user's notifications
+      operationId: getMyNotifications
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: List of notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NotificationDto"
+
+  /notifications/unread-count:
+    get:
+      tags: [Notifications]
+      summary: Count unread notifications
+      operationId: countUnreadNotifications
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Unread count
+          content:
+            application/json:
+              schema:
+                type: integer
+
+  /notifications/{notificationId}/read:
+    parameters:
+      - name: notificationId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    patch:
+      tags: [Notifications]
+      summary: Mark a notification as read
+      operationId: markNotificationAsRead
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Marked as read
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -2460,6 +2721,158 @@ components:
     TeamGradeDistributionMode:
       type: string
       enum: [MANUAL, AUTO_EQUAL, CAPTAIN_MANUAL, TEAM_VOTE]
+
+    PeerReviewScoringStrategy:
+      type: string
+      enum: [AVERAGE, MIN, MAX]
+
+    PeerReviewReviewMode:
+      type: string
+      enum: [ONE_TO_ONE, MANY_TO_ONE]
+
+    PeerReviewUsageType:
+      type: string
+      enum: [CRITERION, SEPARATE_GRADE]
+
+    PeerReviewAssignmentStatus:
+      type: string
+      enum: [PENDING, COMPLETED, MISSED]
+
+    NotificationDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          $ref: "#/components/schemas/NotificationType"
+        title:
+          type: string
+        message:
+          type: string
+        read:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    NotificationType:
+      type: string
+      enum: [PEER_REVIEW, SYSTEM]
+
+    PeerReviewConfigRequest:
+      type: object
+      required: [reviewersCount, scoringStrategy, firstDeadline, secondDeadline]
+      properties:
+        reviewersCount:
+          type: integer
+          minimum: 1
+        scoringStrategy:
+          $ref: "#/components/schemas/PeerReviewScoringStrategy"
+        firstDeadline:
+          type: string
+          format: date-time
+        secondDeadline:
+          type: string
+          format: date-time
+        redistributionFactor:
+          type: integer
+          minimum: 1
+        missedReviewPenalty:
+          type: number
+          format: decimal
+          minimum: 0
+        reviewMode:
+          $ref: "#/components/schemas/PeerReviewReviewMode"
+        usageType:
+          $ref: "#/components/schemas/PeerReviewUsageType"
+
+    PeerReviewConfigDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        reviewersCount:
+          type: integer
+        scoringStrategy:
+          $ref: "#/components/schemas/PeerReviewScoringStrategy"
+        firstDeadline:
+          type: string
+          format: date-time
+        secondDeadline:
+          type: string
+          format: date-time
+        redistributionFactor:
+          type: integer
+        missedReviewPenalty:
+          type: number
+          format: decimal
+        reviewMode:
+          $ref: "#/components/schemas/PeerReviewReviewMode"
+        usageType:
+          $ref: "#/components/schemas/PeerReviewUsageType"
+        round1ClosedAt:
+          type: string
+          format: date-time
+        round2ClosedAt:
+          type: string
+          format: date-time
+
+    PeerReviewAssignmentDto:
+      type: object
+      properties:
+        assignmentId:
+          type: string
+          format: uuid
+        revieweeSolutionId:
+          type: string
+          format: uuid
+        status:
+          $ref: "#/components/schemas/PeerReviewAssignmentStatus"
+        round:
+          type: integer
+        firstDeadline:
+          type: string
+          format: date-time
+        assignedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        submittedGrade:
+          type: number
+          format: decimal
+        submittedComment:
+          type: string
+
+    SubmitPeerReviewRequest:
+      type: object
+      required: [grade]
+      properties:
+        grade:
+          type: number
+          format: decimal
+        comment:
+          type: string
+          maxLength: 5000
+
+    UnderReviewedSolutionDto:
+      type: object
+      properties:
+        solutionId:
+          type: string
+          format: uuid
+        studentId:
+          type: string
+          format: uuid
+        studentUsername:
+          type: string
+        requiredReviews:
+          type: integer
+        completedReviews:
+          type: integer
 
     PostCaptainDto:
       type: object

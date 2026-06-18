@@ -60,6 +60,13 @@ public class MultiCriteriaGradingService {
             throw new BadRequestException("maxGrade must be greater than 0");
         }
 
+        long peerReviewCriteriaCount = request.getCriteria().stream()
+                .filter(c -> c.getType() == CriterionType.PEER_REVIEW)
+                .count();
+        if (peerReviewCriteriaCount > 1) {
+            throw new BadRequestException("Only one PEER_REVIEW criterion is allowed per task");
+        }
+
         GradingConfig config = gradingConfigRepository.findByPostId(postId).orElse(null);
         if (config == null) {
             config = GradingConfig.builder()
@@ -92,6 +99,7 @@ public class MultiCriteriaGradingService {
         config.replaceCriteria(newCriteria);
 
         GradingConfig saved = gradingConfigRepository.save(config);
+        criterionRepository.saveAll(saved.getCriteria());
 
         List<Criterion> savedCriteria = criterionRepository.findByGradingConfigIdOrderBySortOrderAsc(saved.getId());
         List<CriterionConfigDto> criterionDtos = request.getCriteria();
@@ -156,6 +164,7 @@ public class MultiCriteriaGradingService {
         }
 
         List<AssessmentCriterionGrade> grades = buildAssessmentGrades(request, criteria, version, result);
+        preservePeerReviewGrade(grades, version, result);
         ModifierConfig modifierConfig = mapper.toModifierConfig(version);
         result.assess(grades, modifierConfig);
 
@@ -329,6 +338,39 @@ public class MultiCriteriaGradingService {
                     .build());
         }
         return grades;
+    }
+
+    /**
+     * Keeps any previously applied peer-review score when a teacher submits or updates
+     * the non-peer-review criteria. Without this, the PEER_REVIEW criterion grade would be
+     * wiped out by {@link AssessmentResult#replaceCriterionGrades(List)}.
+     */
+    private void preservePeerReviewGrade(List<AssessmentCriterionGrade> grades,
+                                         GradingConfigVersion version,
+                                         AssessmentResult result) {
+        Optional<VersionedCriterion> peerReviewVc = version.getCriteria().stream()
+                .filter(vc -> vc.getType() == CriterionType.PEER_REVIEW)
+                .findFirst();
+        if (peerReviewVc.isEmpty()) {
+            return;
+        }
+
+        BigDecimal existingValue = Optional.ofNullable(result)
+                .map(AssessmentResult::getCriterionGrades)
+                .flatMap(list -> list.stream()
+                        .filter(g -> g.getVersionedCriterion().getType() == CriterionType.PEER_REVIEW)
+                        .findFirst())
+                .map(AssessmentCriterionGrade::getValue)
+                .orElse(BigDecimal.ZERO);
+
+        BigDecimal maxPoints = peerReviewVc.get().getMaxPoints();
+        BigDecimal value = existingValue.max(BigDecimal.ZERO).min(maxPoints);
+
+        grades.add(AssessmentCriterionGrade.builder()
+                .assessmentResult(result)
+                .versionedCriterion(peerReviewVc.get())
+                .value(value)
+                .build());
     }
 
     private void publishSolutionGradedEvent(AssessmentResult result) {

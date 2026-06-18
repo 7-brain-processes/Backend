@@ -5,6 +5,7 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,9 +31,13 @@ public class Solution {
     @JoinColumn(name = "post_id", nullable = false)
     private Post post;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "student_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "student_id")
     private User student;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "team_id")
+    private CourseTeam team;
 
     @Column(columnDefinition = "TEXT")
     private String text;
@@ -44,6 +49,9 @@ public class Solution {
 
     @Column
     private Integer grade;
+
+    @Column(name = "peer_review_grade", precision = 10, scale = 2)
+    private BigDecimal peerReviewGrade;
 
     @OneToMany(mappedBy = "solution", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default

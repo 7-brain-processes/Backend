@@ -2,8 +2,14 @@ package com.classroom.core.support;
 
 import com.classroom.core.repository.AssessmentCriterionGradeRepository;
 import com.classroom.core.repository.AssessmentResultRepository;
+import com.classroom.core.repository.CriterionRepository;
+import com.classroom.core.repository.GradingConfigRepository;
 import com.classroom.core.repository.CommentRepository;
 import com.classroom.core.repository.CourseCategoryRepository;
+import com.classroom.core.repository.PeerReviewAssignmentRepository;
+import com.classroom.core.repository.PeerReviewConfigRepository;
+import com.classroom.core.repository.PeerReviewPenaltyRepository;
+import com.classroom.core.repository.PeerReviewRepository;
 import com.classroom.core.repository.CourseMemberRepository;
 import com.classroom.core.repository.CourseRepository;
 import com.classroom.core.repository.CourseTeamRepository;
@@ -28,6 +34,12 @@ public class TestDatabaseCleaner {
 
     private final AssessmentCriterionGradeRepository assessmentCriterionGradeRepository;
     private final AssessmentResultRepository assessmentResultRepository;
+    private final PeerReviewRepository peerReviewRepository;
+    private final PeerReviewAssignmentRepository peerReviewAssignmentRepository;
+    private final PeerReviewPenaltyRepository peerReviewPenaltyRepository;
+    private final PeerReviewConfigRepository peerReviewConfigRepository;
+    private final CriterionRepository criterionRepository;
+    private final GradingConfigRepository gradingConfigRepository;
     private final VersionedCriterionRepository versionedCriterionRepository;
     private final GradingConfigVersionRepository gradingConfigVersionRepository;
     private final CommentRepository commentRepository;
@@ -52,6 +64,24 @@ public class TestDatabaseCleaner {
 
         assessmentResultRepository.deleteAll();
         assessmentResultRepository.flush();
+
+        peerReviewRepository.deleteAll();
+        peerReviewRepository.flush();
+
+        peerReviewAssignmentRepository.deleteAll();
+        peerReviewAssignmentRepository.flush();
+
+        peerReviewPenaltyRepository.deleteAll();
+        peerReviewPenaltyRepository.flush();
+
+        peerReviewConfigRepository.deleteAll();
+        peerReviewConfigRepository.flush();
+
+        criterionRepository.deleteAll();
+        criterionRepository.flush();
+
+        gradingConfigRepository.deleteAll();
+        gradingConfigRepository.flush();
 
         versionedCriterionRepository.deleteAll();
         versionedCriterionRepository.flush();

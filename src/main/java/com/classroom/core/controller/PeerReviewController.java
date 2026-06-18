@@ -2,7 +2,10 @@ package com.classroom.core.controller;
 
 import com.classroom.core.dto.ErrorResponse;
 import com.classroom.core.dto.peerreview.PeerReviewAssignmentDto;
+import com.classroom.core.dto.peerreview.PeerReviewConfigDto;
 import com.classroom.core.dto.peerreview.SubmitPeerReviewRequest;
+import com.classroom.core.dto.peerreview.UnderReviewedSolutionDto;
+import com.classroom.core.model.Solution;
 import com.classroom.core.security.UserPrincipal;
 import com.classroom.core.service.PeerReviewService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -20,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/courses/{courseId}/posts/{postId}/peer-review")
@@ -28,6 +32,31 @@ import java.util.UUID;
 public class PeerReviewController {
 
     private final PeerReviewService peerReviewService;
+
+    @GetMapping("/config")
+    @Operation(
+            summary = "Get peer review configuration",
+            description = "Returns the peer review configuration for the task. Second deadline is visible only to teachers.",
+            operationId = "getPeerReviewConfig",
+            security = @SecurityRequirement(name = "bearerAuth"),
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Peer review configuration",
+                            content = @Content(schema = @Schema(implementation = PeerReviewConfigDto.class))),
+                    @ApiResponse(responseCode = "403", description = "Insufficient permissions",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "404", description = "Resource not found",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            }
+    )
+    public ResponseEntity<PeerReviewConfigDto> getConfig(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable UUID courseId,
+            @PathVariable UUID postId) {
+
+        PeerReviewConfigDto dto = peerReviewService.getConfigDto(courseId, postId, principal.getId())
+                .orElseThrow(() -> new com.classroom.core.exception.ResourceNotFoundException("Peer review config not found"));
+        return ResponseEntity.ok(dto);
+    }
 
     @PostMapping("/distribute")
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -77,6 +106,104 @@ public class PeerReviewController {
         peerReviewService.distributeRound2(postId, courseId, principal.getId());
     }
 
+    @PostMapping("/close-round1")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(
+            summary = "Close round 1 manually (teacher only)",
+            description = "Marks pending round-1 assignments as missed, applies penalties and triggers round-2 redistribution.",
+            operationId = "closeRound1",
+            security = @SecurityRequirement(name = "bearerAuth"),
+            responses = {
+                    @ApiResponse(responseCode = "204", description = "Round 1 closed"),
+                    @ApiResponse(responseCode = "400", description = "First deadline has not passed",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "403", description = "Insufficient permissions",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "404", description = "Resource not found",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            }
+    )
+    public void closeRound1(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable UUID courseId,
+            @PathVariable UUID postId) {
+
+        peerReviewService.closeRound1(postId, courseId, principal.getId());
+    }
+
+    @PostMapping("/close-round2")
+    @Operation(
+            summary = "Close round 2 manually (teacher only)",
+            description = "Identifies solutions that still lack required reviews after the second deadline. " +
+                    "Returns the list of under-reviewed solutions so the teacher can intervene manually.",
+            operationId = "closeRound2",
+            security = @SecurityRequirement(name = "bearerAuth"),
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Round 2 closed",
+                            content = @Content(schema = @Schema(implementation = UnderReviewedSolutionDto.class))),
+                    @ApiResponse(responseCode = "400", description = "Second deadline has not passed",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "403", description = "Insufficient permissions",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "404", description = "Resource not found",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            }
+    )
+    public ResponseEntity<List<UnderReviewedSolutionDto>> closeRound2(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable UUID courseId,
+            @PathVariable UUID postId) {
+
+        List<Solution> solutions = peerReviewService.closeRound2(postId, courseId, principal.getId());
+        return ResponseEntity.ok(toUnderReviewedDtos(courseId, postId, principal.getId(), solutions));
+    }
+
+    private List<UnderReviewedSolutionDto> toUnderReviewedDtos(UUID courseId, UUID postId, UUID userId, List<Solution> solutions) {
+        int requiredReviews = peerReviewService.getConfigDto(courseId, postId, userId)
+                .map(PeerReviewConfigDto::getReviewersCount)
+                .orElse(0);
+        return solutions.stream()
+                .map(s -> {
+                    UnderReviewedSolutionDto.UnderReviewedSolutionDtoBuilder builder = UnderReviewedSolutionDto.builder()
+                            .solutionId(s.getId())
+                            .requiredReviews(requiredReviews)
+                            .completedReviews((int) peerReviewService.countCompletedReviews(s.getId()));
+                    if (s.getStudent() != null) {
+                        builder.studentId(s.getStudent().getId())
+                                .studentUsername(s.getStudent().getUsername());
+                    }
+                    if (s.getTeam() != null) {
+                        builder.teamId(s.getTeam().getId())
+                                .teamName(s.getTeam().getName());
+                    }
+                    return builder.build();
+                })
+                .collect(Collectors.toList());
+    }
+
+    @GetMapping("/under-reviewed")
+    @Operation(
+            summary = "Get solutions with insufficient reviews (teacher only)",
+            description = "Returns works that have fewer completed reviews than required.",
+            operationId = "getUnderReviewedSolutions",
+            security = @SecurityRequirement(name = "bearerAuth"),
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "List of under-reviewed solutions"),
+                    @ApiResponse(responseCode = "403", description = "Insufficient permissions",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    @ApiResponse(responseCode = "404", description = "Resource not found",
+                            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            }
+    )
+    public ResponseEntity<List<UnderReviewedSolutionDto>> getUnderReviewedSolutions(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable UUID courseId,
+            @PathVariable UUID postId) {
+
+        List<Solution> solutions = peerReviewService.getUnderReviewedSolutions(courseId, postId, principal.getId());
+        return ResponseEntity.ok(toUnderReviewedDtos(courseId, postId, principal.getId(), solutions));
+    }
+
     @GetMapping("/my-assignments")
     @Operation(
             summary = "Get peer review assignments for the current student",
@@ -96,7 +223,7 @@ public class PeerReviewController {
             @PathVariable UUID courseId,
             @PathVariable UUID postId) {
 
-        List<PeerReviewAssignmentDto> assignments = peerReviewService.getMyAssignments(postId, principal.getId());
+        List<PeerReviewAssignmentDto> assignments = peerReviewService.getMyAssignments(courseId, postId, principal.getId());
         return ResponseEntity.ok(assignments);
     }
 
@@ -124,7 +251,7 @@ public class PeerReviewController {
             @PathVariable UUID assignmentId,
             @Valid @RequestBody SubmitPeerReviewRequest request) {
 
-        PeerReviewAssignmentDto result = peerReviewService.submitReview(assignmentId, request, principal.getId());
+        PeerReviewAssignmentDto result = peerReviewService.submitReview(courseId, postId, assignmentId, request, principal.getId());
         return ResponseEntity.ok(result);
     }
 

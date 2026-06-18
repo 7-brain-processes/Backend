@@ -1,0 +1,3 @@
+ALTER TABLE peer_review_configs
+    ADD COLUMN IF NOT EXISTS usage_type VARCHAR(20) NOT NULL DEFAULT 'CRITERION'
+        CHECK (usage_type IN ('CRITERION', 'SEPARATE_GRADE'));

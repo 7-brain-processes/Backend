@@ -49,6 +49,8 @@ class MultiCriteriaGradingServiceTest {
     private CourseRepository courseRepository;
     @Mock
     private ApplicationEventPublisher eventPublisher;
+    @Mock
+    private PeerReviewService peerReviewService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private GradingGuard guard;
@@ -74,7 +76,8 @@ class MultiCriteriaGradingServiceTest {
                 objectMapper,
                 guard,
                 mapper,
-                eventPublisher
+                eventPublisher,
+                peerReviewService
         );
     }
 
@@ -371,7 +374,7 @@ class MultiCriteriaGradingServiceTest {
 
         assertThatThrownBy(() -> gradingService.upsertCriteriaGrades(courseId, postId, solutionId, request, userId))
                 .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("Grades must be submitted for exactly the configured criteria");
+                .hasMessageContaining("Grades must be submitted for exactly the non-peer-review criteria");
     }
 
     @Test
@@ -523,5 +526,36 @@ class MultiCriteriaGradingServiceTest {
         assertThatThrownBy(() -> gradingService.upsertGradingConfig(courseId, postId, request, userId))
                 .isInstanceOf(ForbiddenException.class)
                 .hasMessageContaining("Only teachers can manage grading configuration");
+    }
+
+    @Test
+    void upsertGradingConfig_shouldRejectMultiplePeerReviewCriteria() {
+        Course course = Course.builder().id(courseId).build();
+        Post post = Post.builder().id(postId).course(course).type(PostType.TASK).build();
+
+        when(courseRepository.existsById(courseId)).thenReturn(true);
+        when(courseMemberRepository.findByCourseIdAndUserId(courseId, userId))
+                .thenReturn(Optional.of(CourseMember.builder().role(CourseRole.TEACHER).build()));
+        when(postRepository.findById(postId)).thenReturn(Optional.of(post));
+
+        UpsertGradingConfigRequest request = UpsertGradingConfigRequest.builder()
+                .maxGrade(new BigDecimal("100"))
+                .criteria(List.of(
+                        CriterionConfigDto.builder()
+                                .type(CriterionType.PEER_REVIEW)
+                                .title("Peer 1")
+                                .weight(new BigDecimal("0.5"))
+                                .build(),
+                        CriterionConfigDto.builder()
+                                .type(CriterionType.PEER_REVIEW)
+                                .title("Peer 2")
+                                .weight(new BigDecimal("0.5"))
+                                .build()
+                ))
+                .build();
+
+        assertThatThrownBy(() -> gradingService.upsertGradingConfig(courseId, postId, request, userId))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("Only one PEER_REVIEW criterion is allowed per task");
     }
 }
