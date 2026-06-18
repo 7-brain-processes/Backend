@@ -32,7 +32,9 @@ public class PeerReviewService {
     private final SolutionRepository solutionRepository;
     private final CourseMemberRepository courseMemberRepository;
     private final AssessmentResultRepository assessmentResultRepository;
+    private final GradingConfigRepository gradingConfigRepository;
     private final GradingDtoMapper gradingDtoMapper;
+    private final GradingConfigVersionService gradingConfigVersionService;
     private final GradingGuard guard;
     private final NotificationService notificationService;
 
@@ -394,7 +396,15 @@ public class PeerReviewService {
     public void applyGradesToAssessments(UUID postId, UUID courseId, UUID userId) {
         guard.ensureTeacher(courseId, userId);
         guard.requireTaskPostInCourse(courseId, postId);
+        applyGradesToAssessments(postId);
+    }
 
+    /**
+     * System-only entry point for automatic grade application.
+     * Does not enforce teacher rights.
+     */
+    @Transactional
+    void applyGradesToAssessments(UUID postId) {
         List<Criterion> peerCriteria = findPeerReviewCriteriaForPost(postId);
         if (peerCriteria.isEmpty()) {
             return;
@@ -407,16 +417,24 @@ public class PeerReviewService {
             return;
         }
 
-        List<AssessmentResult> results = assessmentResultRepository.findBySolutionPostId(postId);
+        GradingConfig gradingConfig = criterion.getGradingConfig();
+        List<Solution> solutions = solutionRepository.findAllByPostIdAndStatusIn(
+                postId, List.of(SolutionStatus.SUBMITTED, SolutionStatus.GRADED));
 
-        for (AssessmentResult result : results) {
-            UUID solutionId = result.getSolution().getId();
+        for (Solution solution : solutions) {
+            UUID solutionId = solution.getId();
             BigDecimal score = computeScore(solutionId, criterion.getId());
 
             if (config.getUsageType() == PeerReviewUsageType.SEPARATE_GRADE) {
-                result.getSolution().setPeerReviewGrade(score);
+                solution.setPeerReviewGrade(score);
                 continue;
             }
+
+            AssessmentResult result = assessmentResultRepository.findBySolutionId(solutionId)
+                    .orElseGet(() -> AssessmentResult.builder()
+                            .solution(solution)
+                            .configVersion(gradingConfigVersionService.findOrCreateVersion(gradingConfig))
+                            .build());
 
             Optional<VersionedCriterion> peerVersionedCriterion = result.getConfigVersion().getCriteria()
                     .stream()
@@ -447,15 +465,17 @@ public class PeerReviewService {
         List<Solution> shuffled = new ArrayList<>(solutions);
         Collections.shuffle(shuffled);
 
-        for (Solution reviewee : solutions) {
-            List<Solution> candidates = shuffled.stream()
-                    .filter(s -> !isSameReviewer(s, reviewee, teamBased))
-                    .collect(Collectors.toList());
-
-           int assignCount = Math.min(reviewersCount, candidates.size());
-            for (int i = 0; i < assignCount; i++) {
-                Solution reviewerSolution = candidates.get(i);
-                assignments.add(buildAssignment(config, reviewee, reviewerSolution, teamBased, round));
+        for (int i = 0; i < shuffled.size(); i++) {
+            Solution reviewee = shuffled.get(i);
+            int assigned = 0;
+            int offset = 1;
+            while (assigned < reviewersCount && offset < shuffled.size()) {
+                Solution reviewer = shuffled.get((i + offset) % shuffled.size());
+                if (!isSameReviewer(reviewer, reviewee, teamBased)) {
+                    assignments.add(buildAssignment(config, reviewee, reviewer, teamBased, round));
+                    assigned++;
+                }
+                offset++;
             }
         }
         return assignments;

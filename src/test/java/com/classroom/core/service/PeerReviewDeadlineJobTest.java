@@ -71,6 +71,7 @@ class PeerReviewDeadlineJobTest {
         job.processDeadlines();
 
         verify(peerReviewService).closeRound2(postId);
+        verify(peerReviewService).applyGradesToAssessments(postId);
     }
 
     @Test

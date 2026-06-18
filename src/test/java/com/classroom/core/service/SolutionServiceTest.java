@@ -76,6 +76,16 @@ class SolutionServiceTest {
                 .createdAt(Instant.now()).updatedAt(Instant.now()).build();
     }
 
+    private Post buildTeamTaskPost(Course course) {
+        return Post.builder()
+                .id(postId).course(course).author(buildUser(teacherId))
+                .title("Team Task 1").type(PostType.TASK)
+                .teamFormationMode(TeamFormationMode.FREE)
+                .deadline(Instant.now().plusSeconds(86400))
+                .files(new ArrayList<>()).comments(new ArrayList<>())
+                .createdAt(Instant.now()).updatedAt(Instant.now()).build();
+    }
+
     private Post buildMaterialPost(Course course) {
         return Post.builder()
                 .id(postId).course(course).author(buildUser(teacherId))
@@ -151,6 +161,24 @@ class SolutionServiceTest {
 
         assertThatThrownBy(() -> solutionService.createSolution(courseId, postId, request, studentId))
                 .isInstanceOf(DuplicateResourceException.class);
+    }
+
+    @Test
+    void createSolution_throwsBadRequestWhenTeamTaskSubmittedWithoutTeam() {
+        Course course = buildCourse();
+        CourseMember studentWithoutTeam = buildMember(course, studentId, CourseRole.STUDENT);
+        Post teamTask = buildTeamTaskPost(course);
+
+        when(courseMemberRepository.findByCourseIdAndUserId(courseId, studentId))
+                .thenReturn(Optional.of(studentWithoutTeam));
+        when(postRepository.findById(postId)).thenReturn(Optional.of(teamTask));
+
+        CreateSolutionRequest request = new CreateSolutionRequest();
+        request.setText("No team answer");
+
+        assertThatThrownBy(() -> solutionService.createSolution(courseId, postId, request, studentId))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("must be a member of a team");
     }
 
     @Test

@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 
 @Slf4j
 @Component
@@ -46,7 +47,9 @@ public class PeerReviewDeadlineJob {
                 if (config.getRound2ClosedAt() == null
                         && config.getSecondDeadline() != null
                         && now.isAfter(config.getSecondDeadline())) {
-                    peerReviewService.closeRound2(config.getCriterion().getGradingConfig().getPost().getId());
+                    UUID postId = config.getCriterion().getGradingConfig().getPost().getId();
+                    peerReviewService.closeRound2(postId);
+                    peerReviewService.applyGradesToAssessments(postId);
                 }
             } catch (Exception e) {
                 log.error("Failed to process peer review deadlines for config {}", config.getId(), e);

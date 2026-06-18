@@ -62,7 +62,10 @@ public class SolutionService {
                 .status(SolutionStatus.SUBMITTED)
                 .build();
 
-        if (post.getTeamFormationMode() != null && member.getTeam() != null) {
+        if (post.getTeamFormationMode() != null) {
+            if (member.getTeam() == null) {
+                throw new BadRequestException("You must be a member of a team to submit a solution to a team task");
+            }
             if (solutionRepository.existsByPostIdAndTeamId(postId, member.getTeam().getId())) {
                 throw new DuplicateResourceException("Team solution already submitted");
             }

@@ -17,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -43,7 +44,11 @@ class PeerReviewServiceTest {
     @Mock
     private AssessmentResultRepository assessmentResultRepository;
     @Mock
+    private GradingConfigRepository gradingConfigRepository;
+    @Mock
     private GradingDtoMapper gradingDtoMapper;
+    @Mock
+    private GradingConfigVersionService gradingConfigVersionService;
     @Mock
     private GradingGuard guard;
     @Mock
@@ -239,6 +244,44 @@ class PeerReviewServiceTest {
         verify(peerReviewAssignmentRepository).saveAll(argThat(assignments -> {
             List<PeerReviewAssignment> list = (List<PeerReviewAssignment>) assignments;
             return list.size() == 2
+                    && list.stream().noneMatch(a ->
+                    a.getReviewerUser().getId().equals(a.getRevieweeSolution().getStudent().getId()));
+        }));
+    }
+
+    @Test
+    void distributeRound1_manyToOne_shouldBalanceReviewerLoad() {
+        Criterion criterion = peerReviewCriterion();
+        PeerReviewConfig config = peerReviewConfig(criterion);
+        config.setReviewersCount(2);
+        User studentA = user(UUID.randomUUID());
+        User studentB = user(UUID.randomUUID());
+        User studentC = user(UUID.randomUUID());
+        User studentD = user(UUID.randomUUID());
+        Solution solutionA = solution(studentA.getId());
+        Solution solutionB = solution(studentB.getId());
+        Solution solutionC = solution(studentC.getId());
+        Solution solutionD = solution(studentD.getId());
+
+        when(criterionRepository.findByGradingConfigPostIdAndType(postId, CriterionType.PEER_REVIEW))
+                .thenReturn(List.of(criterion));
+        when(peerReviewConfigRepository.findByCriterionId(criterionId)).thenReturn(Optional.of(config));
+        when(solutionRepository.findAllByPostIdAndStatusIn(postId, List.of(SolutionStatus.SUBMITTED, SolutionStatus.GRADED)))
+                .thenReturn(List.of(solutionA, solutionB, solutionC, solutionD));
+        when(peerReviewAssignmentRepository.findByPeerReviewConfigId(configId)).thenReturn(List.of());
+        when(peerReviewAssignmentRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
+
+        peerReviewService.distributeRound1(postId, courseId, userId);
+
+        verify(peerReviewAssignmentRepository).saveAll(argThat(assignments -> {
+            List<PeerReviewAssignment> list = (List<PeerReviewAssignment>) assignments;
+            if (list.size() != 8) {
+                return false;
+            }
+            Map<UUID, Long> reviewerCounts = list.stream()
+                    .collect(Collectors.groupingBy(a -> a.getReviewerUser().getId(), Collectors.counting()));
+            return reviewerCounts.size() == 4
+                    && reviewerCounts.values().stream().allMatch(c -> c == 2L)
                     && list.stream().noneMatch(a ->
                     a.getReviewerUser().getId().equals(a.getRevieweeSolution().getStudent().getId()));
         }));
@@ -878,17 +921,6 @@ class PeerReviewServiceTest {
                 .build();
 
         Solution solution = solution(userId);
-        GradingConfigVersion version = GradingConfigVersion.builder()
-                .id(UUID.randomUUID())
-                .post(criterion.getGradingConfig().getPost())
-                .versionNumber(1)
-                .maxGrade(new BigDecimal("100"))
-                .build();
-        AssessmentResult result = AssessmentResult.builder()
-                .id(UUID.randomUUID())
-                .solution(solution)
-                .configVersion(version)
-                .build();
 
         Post post = criterion.getGradingConfig().getPost();
         doNothing().when(guard).ensureTeacher(courseId, userId);
@@ -896,7 +928,8 @@ class PeerReviewServiceTest {
         when(criterionRepository.findByGradingConfigPostIdAndType(postId, CriterionType.PEER_REVIEW))
                 .thenReturn(List.of(criterion));
         when(peerReviewConfigRepository.findByCriterionId(criterionId)).thenReturn(Optional.of(config));
-        when(assessmentResultRepository.findBySolutionPostId(postId)).thenReturn(List.of(result));
+        when(solutionRepository.findAllByPostIdAndStatusIn(postId, List.of(SolutionStatus.SUBMITTED, SolutionStatus.GRADED)))
+                .thenReturn(List.of(solution));
         when(peerReviewRepository.findByRevieweeSolutionIdOrderBySubmittedAt(solution.getId()))
                 .thenReturn(List.of(review(new BigDecimal("80"), Instant.now())));
         when(peerReviewPenaltyRepository.findByPostIdAndUserId(postId, userId)).thenReturn(List.of());
@@ -906,6 +939,55 @@ class PeerReviewServiceTest {
 
         assertThat(solution.getPeerReviewGrade()).isEqualByComparingTo("80");
         verify(assessmentResultRepository, never()).save(any());
+    }
+
+    @Test
+    void applyGradesToAssessments_criterionCreatesAssessmentResultWhenMissing() {
+        Criterion criterion = peerReviewCriterion();
+        PeerReviewConfig config = peerReviewConfig(criterion);
+        config.setUsageType(PeerReviewUsageType.CRITERION);
+
+        Solution solution = solution(userId);
+        GradingConfigVersion version = GradingConfigVersion.builder()
+                .id(UUID.randomUUID())
+                .post(criterion.getGradingConfig().getPost())
+                .versionNumber(1)
+                .maxGrade(new BigDecimal("100"))
+                .criteria(List.of(VersionedCriterion.builder()
+                        .id(UUID.randomUUID())
+                        .type(CriterionType.PEER_REVIEW)
+                        .title("Peer Review")
+                        .maxPoints(new BigDecimal("100"))
+                        .weight(BigDecimal.ONE)
+                        .sortOrder(0)
+                        .build()))
+                .build();
+
+        Post post = criterion.getGradingConfig().getPost();
+        doNothing().when(guard).ensureTeacher(courseId, userId);
+        when(guard.requireTaskPostInCourse(courseId, postId)).thenReturn(post);
+        when(criterionRepository.findByGradingConfigPostIdAndType(postId, CriterionType.PEER_REVIEW))
+                .thenReturn(List.of(criterion));
+        when(peerReviewConfigRepository.findByCriterionId(criterionId)).thenReturn(Optional.of(config));
+        when(solutionRepository.findAllByPostIdAndStatusIn(postId, List.of(SolutionStatus.SUBMITTED, SolutionStatus.GRADED)))
+                .thenReturn(List.of(solution));
+        when(peerReviewRepository.findByRevieweeSolutionIdOrderBySubmittedAt(solution.getId()))
+                .thenReturn(List.of(review(new BigDecimal("80"), Instant.now())));
+        when(peerReviewPenaltyRepository.findByPostIdAndUserId(postId, userId)).thenReturn(List.of());
+        when(solutionRepository.findById(solution.getId())).thenReturn(Optional.of(solution));
+        when(assessmentResultRepository.findBySolutionId(solution.getId())).thenReturn(Optional.empty());
+        when(gradingConfigVersionService.findOrCreateVersion(criterion.getGradingConfig())).thenReturn(version);
+        when(gradingDtoMapper.toModifierConfig(version)).thenReturn(null);
+        when(assessmentResultRepository.save(any(AssessmentResult.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        peerReviewService.applyGradesToAssessments(postId, courseId, userId);
+
+        verify(assessmentResultRepository).save(argThat(result ->
+                result.getSolution().equals(solution)
+                        && result.getConfigVersion().equals(version)
+                        && result.getCriterionGrades().stream()
+                        .anyMatch(g -> g.getVersionedCriterion().getType() == CriterionType.PEER_REVIEW
+                                && g.getValue().compareTo(new BigDecimal("80")) == 0)));
     }
 
     private PeerReviewConfigRequest configRequest() {

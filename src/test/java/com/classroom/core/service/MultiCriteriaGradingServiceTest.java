@@ -55,6 +55,7 @@ class MultiCriteriaGradingServiceTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private GradingGuard guard;
     private GradingDtoMapper mapper;
+    private GradingConfigVersionService gradingConfigVersionService;
     private MultiCriteriaGradingService gradingService;
 
     private final UUID courseId = UUID.randomUUID();
@@ -66,18 +67,18 @@ class MultiCriteriaGradingServiceTest {
     void setUp() {
         guard = new GradingGuard(courseRepository, courseMemberRepository, postRepository, solutionRepository, gradingConfigRepository);
         mapper = new GradingDtoMapper(objectMapper);
+        gradingConfigVersionService = new GradingConfigVersionService(criterionRepository, gradingConfigVersionRepository);
         gradingService = new MultiCriteriaGradingService(
                 gradingConfigRepository,
                 criterionRepository,
-                gradingConfigVersionRepository,
-                versionedCriterionRepository,
                 assessmentResultRepository,
                 assessmentCriterionGradeRepository,
                 objectMapper,
                 guard,
                 mapper,
                 eventPublisher,
-                peerReviewService
+                peerReviewService,
+                gradingConfigVersionService
         );
     }
 

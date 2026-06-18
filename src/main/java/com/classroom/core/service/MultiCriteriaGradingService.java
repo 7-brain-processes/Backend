@@ -28,8 +28,6 @@ public class MultiCriteriaGradingService {
 
     private final GradingConfigRepository gradingConfigRepository;
     private final CriterionRepository criterionRepository;
-    private final GradingConfigVersionRepository gradingConfigVersionRepository;
-    private final VersionedCriterionRepository versionedCriterionRepository;
     private final AssessmentResultRepository assessmentResultRepository;
     private final AssessmentCriterionGradeRepository assessmentCriterionGradeRepository;
     private final ObjectMapper objectMapper;
@@ -37,6 +35,7 @@ public class MultiCriteriaGradingService {
     private final GradingDtoMapper mapper;
     private final ApplicationEventPublisher eventPublisher;
     private final PeerReviewService peerReviewService;
+    private final GradingConfigVersionService gradingConfigVersionService;
 
     public GradingConfigDto getGradingConfig(UUID courseId, UUID postId, UUID userId) {
         guard.requireMember(courseId, userId);
@@ -274,22 +273,7 @@ public class MultiCriteriaGradingService {
     }
 
     private GradingConfigVersion findOrCreateConfigVersion(GradingConfig config) {
-        List<Criterion> currentCriteria = criterionRepository.findByGradingConfigIdOrderBySortOrderAsc(config.getId());
-
-        Optional<GradingConfigVersion> latestOpt = gradingConfigVersionRepository
-                .findTopByPostIdOrderByVersionNumberDesc(config.getPost().getId());
-
-        if (latestOpt.isPresent()) {
-            GradingConfigVersion latest = latestOpt.get();
-            if (config.matchesVersion(latest, currentCriteria)) {
-                return latest;
-            }
-            GradingConfigVersion next = config.snapshotVersion(latest.getVersionNumber() + 1, currentCriteria);
-            return gradingConfigVersionRepository.save(next);
-        }
-
-        GradingConfigVersion first = config.snapshotVersion(1, currentCriteria);
-        return gradingConfigVersionRepository.save(first);
+        return gradingConfigVersionService.findOrCreateVersion(config);
     }
 
     private void validateGradeSubmission(List<Criterion> criteria, CriteriaGradeSubmissionDto request) {
